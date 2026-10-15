@@ -14,6 +14,9 @@ packages/
 docs/
   development.md  run the apps against the local backend
   environments.md development / staging / production, variables and secrets
+  testing.md      Jest + React Native Testing Library, Maestro
+maestro/
+  flows/          end-to-end flows (YAML), run on a device with the development build
 ```
 
 Stack: Expo SDK 57, React Native 0.86, React 19.2, TypeScript (strict), Expo Router, Jest + Testing Library, Sentry,

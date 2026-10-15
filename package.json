@@ -17,7 +17,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "rider": "pnpm --filter @taxikosmos/rider",
-    "driver": "pnpm --filter @taxikosmos/driver"
+    "driver": "pnpm --filter @taxikosmos/driver",
+    "e2e:check": "bash maestro/scripts/check.sh",
+    "e2e:rider": "bash maestro/scripts/run.sh rider",
+    "e2e:driver": "bash maestro/scripts/run.sh driver"
   },
   "devDependencies": {
     "eslint": "9.39.5",

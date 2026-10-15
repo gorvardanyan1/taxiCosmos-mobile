@@ -73,6 +73,8 @@ Replace `rider` with `driver` for the driver app. Development builds are install
 | ---------------------------------------------- | --------------------------------------------------------------------------- |
 | `pnpm check`                                   | typecheck + lint + tests in every workspace (what CI runs)                  |
 | `pnpm test` / `pnpm lint` / `pnpm typecheck`   | one of the above                                                            |
+| `pnpm e2e:check`                               | validates the Maestro flows' syntax (no device)                             |
+| `pnpm e2e:rider` / `pnpm e2e:driver`           | runs the Maestro flows on the connected device                              |
 | `pnpm bundle`                                  | bundles both apps for iOS and Android (`expo export`), proving they compile |
 | `pnpm doctor`                                  | `expo-doctor` on both apps: SDK-compatible versions and config              |
 | `pnpm format`                                  | Prettier                                                                    |
@@ -81,6 +83,11 @@ Replace `rider` with `driver` for the driver app. Development builds are install
 Add a dependency to one app with `pnpm rider exec expo install <package>` so Expo picks the version that matches SDK 57.
 Never add React Native, React or another copy of an Expo module to a shared package's dependencies: Expo supports only
 one React Native version in a monorepo.
+
+## Testing
+
+Jest + React Native Testing Library for logic and screens, Maestro for end-to-end flows on a device: see
+[testing.md](testing.md).
 
 ## Environments
 
