@@ -1,0 +1,25 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["tsconfig.base.json", "eslint.config.js"],
+  "tasks": {
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": []
+    },
+    "lint": {
+      "outputs": []
+    },
+    "test": {
+      "outputs": [],
+      "env": ["APP_ENV"]
+    },
+    "bundle": {
+      "outputs": ["dist/**"],
+      "env": ["APP_ENV", "API_URL", "SENTRY_DSN"]
+    },
+    "doctor": {
+      "cache": false,
+      "outputs": []
+    }
+  }
+}
