@@ -13,7 +13,7 @@
     "test": "turbo run test",
     "check": "turbo run typecheck lint test",
     "bundle": "turbo run bundle",
-    "doctor": "turbo run doctor",
+    "check:expo": "turbo run doctor",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "rider": "pnpm --filter @taxikosmos/rider",

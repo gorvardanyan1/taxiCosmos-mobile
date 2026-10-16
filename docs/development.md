@@ -76,7 +76,7 @@ Replace `rider` with `driver` for the driver app. Development builds are install
 | `pnpm e2e:check`                               | validates the Maestro flows' syntax (no device)                             |
 | `pnpm e2e:rider` / `pnpm e2e:driver`           | runs the Maestro flows on the connected device                              |
 | `pnpm bundle`                                  | bundles both apps for iOS and Android (`expo export`), proving they compile |
-| `pnpm doctor`                                  | `expo-doctor` on both apps: SDK-compatible versions and config              |
+| `pnpm check:expo`                              | `expo-doctor` on both apps: SDK-compatible versions and config              |
 | `pnpm format`                                  | Prettier                                                                    |
 | `pnpm rider <script>` / `pnpm driver <script>` | run a script in one app                                                     |
 
