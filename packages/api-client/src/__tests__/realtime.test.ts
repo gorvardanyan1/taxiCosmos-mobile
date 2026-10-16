@@ -360,6 +360,25 @@ describe('the app returns to the foreground', () => {
     expect(client.status).toBe('reconnecting');
   });
 
+  it('starts the pauses again from the first one after a reconnect on foreground', async () => {
+    const { client, last, pending, fire } = setup();
+    client.start();
+    await flush();
+    last().serverAccepts();
+    last().serverDrops();
+    await fire();
+    last().fail();
+    await fire();
+    last().fail();
+    expect(pending()[0]?.ms).toBe(4_000);
+
+    client.foreground();
+    await flush();
+    last().fail();
+
+    expect(pending()[0]?.ms).toBe(1_000);
+  });
+
   it('does nothing before start or after stop', async () => {
     const { client, transports } = setup();
     const reconnected = jest.fn();

@@ -87,12 +87,11 @@ describe('createAppApi', () => {
   };
 
   it("keeps the session in the secure store under the app's own key", async () => {
-    const { api, server } = make([ok(sessionPayload({ access_token: 'tok-1', refresh_token: 'ref-1' }))]);
-    await api.client.post('/auth/otp/verify', { auth: false });
+    const { api } = make([]);
     await api.client.session.start(sessionPayload({ access_token: 'tok-1', refresh_token: 'ref-1' }));
 
     expect(items.get('taxikosmos.session.rider')).toContain('tok-1');
-    expect(server.requests).toHaveLength(1);
+    expect(items.get('taxikosmos.session.driver')).toBeUndefined();
   });
 
   it('answers in the language of the app, and follows a change of language', async () => {
@@ -105,7 +104,8 @@ describe('createAppApi', () => {
     expect(server.requests.map((r) => r.headers['accept-language'])).toEqual(['en', 'hy']);
   });
 
-  it('remembers an action in the secure store so its key survives a restart', async () => {
+  it('remembers an action in the secure store so its key survives a restart (while the same person is signed in)', async () => {
+    await createSecureTokenStore('rider').write(pair());
     const first = make(['network-error']);
     await first.api.client.post('/support-tickets', { operation: 'ticket:draft-1' }).catch(() => undefined);
     const second = make([ok({}, 201)]);
@@ -115,6 +115,17 @@ describe('createAppApi', () => {
       first.server.requests[0]?.headers['idempotency-key'],
     );
     expect([...items.keys()].some((key) => key.startsWith('taxikosmos.operation.'))).toBe(true);
+  });
+
+  it('leaves nothing of the actions in the secure store once the person signs out', async () => {
+    await createSecureTokenStore('rider').write(pair());
+    const { api } = make([ok({ data: { holder: 'Private Name' } }, 201)]);
+    await api.client.post('/driver/bank-accounts', { operation: 'bank:1' });
+    expect([...items.keys()].some((key) => key.startsWith('taxikosmos.operation.'))).toBe(true);
+
+    await api.client.session.clear();
+
+    expect([...items.keys()]).toEqual([]);
   });
 
   it('polls over REST when there is no realtime address, and uses the socket when there is one', () => {

@@ -118,7 +118,8 @@ export interface Me {
   phone: string | null;
   email: string | null;
   email_verified: boolean;
-  locale: Locale;
+  /** `null` until the person (or the app, at sign-in) picks a language: both are optional in the API. */
+  locale: Locale | null;
   timezone: string | null;
   status: UserStatus;
   modes: { is_rider: boolean; is_driver: boolean };
@@ -175,7 +176,8 @@ export interface GeoSuggestion {
 }
 
 export interface GeoPlace {
-  place_id: string;
+  /** `null` when the maps provider has no id for the spot (a reverse lookup of a bare coordinate). */
+  place_id: string | null;
   name: string | null;
   address: string;
   location: LatLng;

@@ -6,7 +6,7 @@
   },
   "body": {
     "access_token": "1|fixture-access-token",
-    "access_token_expires_at": "2026-10-16T08:34:16+00:00",
+    "access_token_expires_at": "2099-01-01T00:00:00+00:00",
     "refresh_token": "fixture-refresh-token",
     "user": {
       "id": 1,

@@ -62,8 +62,15 @@ api.support.create(body, 'ticket:draft-1'); // same name => same key until the s
 
 A retry after a dropped connection (or after closing the app) reuses the key; once accepted, repeating the action returns the stored answer
 with no second request; a double tap shares one request; a final refusal (e.g. 422) ends the action so the corrected attempt gets a new key.
-The mutation hooks do this for you (editing the input starts a new action). **The backend honours the header only on support tickets today**; the
-other writes rely on the app not repeating them. Endpoints marked `retries` resend by themselves only where the server dedupes.
+
+- **The mutation hooks** name an action for you and keep the name while the screen is mounted: pressing the button again, or a double tap,
+  reuses the key, and editing the input starts a new action. A screen that is closed and reopened starts a new action; where a retry must
+  survive that, pass your own stable name to the endpoint function (`api.support.create(body, 'ticket:draft-1')`).
+- **What is kept, and for how long.** The record of an action (its key and the server's answer, which can hold names, addresses or bank
+  details) lives in the secure store, never in plain storage. It is deleted when the person signs out, when another person signs in, when the
+  app starts and finds nobody signed in, and after 24 hours at the latest. An action that finishes after sign-out does not write itself back.
+- **The backend honours the header only on support tickets today**; the other writes rely on the app not repeating them. Endpoints marked
+  `retries` resend by themselves only where the server dedupes.
 
 ## Realtime
 

@@ -590,3 +590,50 @@ describe('the place id in the path', () => {
     expect(server.requests[0]?.query).toEqual({});
   });
 });
+
+describe('time limits: a slow connection must not hold a screen for ever', () => {
+  const point = { lat: 40.18, lng: 44.51 };
+  const upload = {
+    type: 'license',
+    file: { uri: 'file:///license.jpg', name: 'license.jpg', type: 'image/jpeg' },
+  } as const;
+
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  /** Starts the call against a server that never answers and reports when it ends. */
+  async function race(call: (api: Api) => Promise<unknown>, limitMs: number) {
+    const { client, tokens } = makeClient(['hang']);
+    let ended: unknown = 'running';
+    void call(createApi(client)).then(
+      () => (ended = 'resolved'),
+      (error: unknown) => (ended = getApiError(error)?.kind ?? 'other'),
+    );
+    await jest.advanceTimersByTimeAsync(limitMs - 1);
+    const beforeLimit = ended;
+    await jest.advanceTimersByTimeAsync(2);
+
+    return { beforeLimit, atLimit: ended, tokens };
+  }
+
+  it('a document upload waits up to 60 seconds (a photo on a poor connection), then reports a timeout', async () => {
+    expect(await race((api) => api.driver.documents.upload(upload), 60_000)).toMatchObject({
+      beforeLimit: 'running',
+      atLimit: 'timeout',
+    });
+  });
+
+  it('a location report gives up after 8 seconds: the next position is coming, an old one is worth nothing', async () => {
+    expect(await race((api) => api.driver.sendLocation(point), 8_000)).toMatchObject({
+      beforeLimit: 'running',
+      atLimit: 'timeout',
+    });
+  });
+
+  it('signing out stops waiting for the server after 5 seconds and signs out anyway', async () => {
+    const result = await race((api) => api.auth.logout(), 5_000);
+
+    expect(result).toMatchObject({ beforeLimit: 'running', atLimit: 'resolved' });
+    expect(result.tokens.log).toContain('clear');
+  });
+});

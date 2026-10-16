@@ -1,4 +1,5 @@
 import * as fixtures from '@taxikosmos/core/fixtures';
+import { focusManager } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react-native';
 import {
   queryKeys,
@@ -9,12 +10,16 @@ import {
   useRealtimeStatus,
   useMe,
   useSessionStatus,
+  useSupportTicket,
   createRealtimeClient,
 } from '..';
 import { replyWith } from './helpers';
 import { captureAppState, fakeRealtime, renderWithApi, testQueryClient, waitFor } from './react-helpers';
 
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+  jest.restoreAllMocks();
+  focusManager.setFocused(undefined);
+});
 
 describe('using the hooks', () => {
   it('refuses to work outside <ApiProvider> with a message that says what to do', () => {
@@ -177,6 +182,47 @@ describe('the app returns to the foreground', () => {
 
     await waitFor(() => expect(result.current.locale).toBe('ru'));
     expect(server.requests).toHaveLength(2);
+  });
+
+  it('tells the query cache whether the app is in front', async () => {
+    const appState = captureAppState();
+    await renderWithApi(() => useSessionStatus(), []);
+
+    act(() => appState.change('background'));
+    expect(focusManager.isFocused()).toBe(false);
+    act(() => appState.change('active'));
+    expect(focusManager.isFocused()).toBe(true);
+  });
+
+  it('stops polling while the app is in the background (no battery or data spent on a screen nobody sees) and resumes in front', async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    try {
+      const appState = captureAppState();
+      const { result, server } = await renderWithApi(
+        () => {
+          const ticket = useSupportTicket(1, { refetchInterval: 4_000 });
+
+          return { isSuccess: ticket.isSuccess };
+        },
+        Array.from({ length: 8 }, () => replyWith(fixtures.supportTicketShow)),
+      );
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      const before = server.requests.length;
+
+      act(() => appState.change('background'));
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(20_000);
+      });
+      expect(server.requests).toHaveLength(before);
+
+      act(() => appState.change('active'));
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(4_100);
+      });
+      await waitFor(() => expect(server.requests.length).toBeGreaterThan(before));
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('listens to the app state once and stops listening when the app is closed', async () => {

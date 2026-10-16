@@ -5,8 +5,8 @@
     "x-ratelimit-remaining": "29"
   },
   "body": {
-    "quote_id": "01a143a2-1013-7200-9a95-e8ac6efcb892",
-    "expires_at": "2026-10-16T07:44:16+00:00",
+    "quote_id": "01a143f8-c431-7025-b7a0-390276056416",
+    "expires_at": "2026-10-16T09:18:59+00:00",
     "zone": {
       "id": 1,
       "name": "Fixture City"

@@ -15,6 +15,11 @@ export interface SessionManagerOptions {
   store: TokenStore;
   /** Exchanges a refresh token for a new session: `POST /auth/refresh`, sent without a bearer token. */
   refresh: (refreshToken: string) => Promise<AuthSession>;
+  /**
+   * Forget everything that belonged to the previous person (their stored actions). Awaited, so a sign-out or a new sign-in is only complete
+   * once it is done. Runs when a sign-in starts, when the session is cleared, and when the app starts and finds nobody signed in.
+   */
+  onForget?: () => Promise<void>;
   /** Called when the session ended by itself (the server refused the refresh token), after the tokens were cleared. */
   onEnded?: (reason: SessionEndReason) => void;
   now?: () => number;
@@ -33,6 +38,7 @@ export class SessionManager {
   private readonly store: TokenStore;
   private readonly doRefresh: (refreshToken: string) => Promise<AuthSession>;
   private readonly onEnded: (reason: SessionEndReason) => void;
+  private readonly forgetPrevious: () => Promise<void>;
   private readonly now: () => number;
   private readonly renewBeforeMs: number;
   private pair: TokenPair | null = null;
@@ -46,6 +52,7 @@ export class SessionManager {
     this.store = options.store;
     this.doRefresh = options.refresh;
     this.onEnded = options.onEnded ?? (() => undefined);
+    this.forgetPrevious = options.onForget ?? (async () => undefined);
     this.now = options.now ?? Date.now;
     this.renewBeforeMs = options.renewBeforeMs ?? 30_000;
   }
@@ -53,15 +60,21 @@ export class SessionManager {
   /** Reads the saved session once. Safe to call from anywhere, any number of times. */
   load(): Promise<void> {
     this.loading ??= this.store.read().then(
-      (pair) => {
+      async (pair) => {
         // A sign-in or sign-out that happened while reading wins over what was on disk.
         if (this.status === 'unknown') {
           this.pair = pair;
+
+          if (pair === null) {
+            await this.forget();
+          }
+
           this.setStatus(pair === null ? 'signed_out' : 'signed_in');
         }
       },
-      () => {
+      async () => {
         if (this.status === 'unknown') {
+          await this.forget();
           this.setStatus('signed_out');
         }
       },
@@ -111,6 +124,7 @@ export class SessionManager {
     await this.store.write(pair);
     this.pair = pair;
     this.loading = Promise.resolve();
+    await this.forget();
     this.setStatus('signed_in');
   }
 
@@ -119,7 +133,17 @@ export class SessionManager {
     this.pair = null;
     this.loading = Promise.resolve();
     await this.store.clear();
+    await this.forget();
     this.setStatus('signed_out');
+  }
+
+  /** Never lets a failure to clean up stop a sign-in or sign-out. */
+  private async forget(): Promise<void> {
+    try {
+      await this.forgetPrevious();
+    } catch {
+      // The records are bounded by their retention time even if this cleanup failed.
+    }
   }
 
   /**

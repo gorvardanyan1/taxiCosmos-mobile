@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import type { GeoPlace, Me } from '../../api/index.ts';
 import * as fixtures from '../index.ts';
 import { formatMoney } from '../../money/index.ts';
 import { isE164 } from '../../phone/index.ts';
@@ -15,7 +16,7 @@ const recorded = readdirSync(dir).filter((file) => file.endsWith('.json'));
 describe('recorded backend responses', () => {
   it('has a typed export for every recorded response and no stale ones', () => {
     expect(Object.keys(fixtures)).toHaveLength(recorded.length);
-    expect(recorded.length).toBeGreaterThanOrEqual(35);
+    expect(recorded.length).toBeGreaterThanOrEqual(37);
   });
 
   it.each(recorded)('%s is exactly what the typed export says', (file) => {
@@ -49,6 +50,49 @@ describe('recorded backend responses', () => {
     );
     expect(fixtures.meRider.body.user.rider?.outstanding_balance).toEqual({ amount: 0, currency: 'AMD' });
     expect(typeof estimate?.surge_multiplier).toBe('string');
+  });
+
+  it('holds no clock reading that would change how the app behaves as time passes', () => {
+    // A recorded token expiry in the past makes the client renew the session before every call: a test built on it passes today and fails
+    // tomorrow. The capture script replaces it with a constant far in the future; this keeps it that way.
+    const expiries: string[] = [];
+    const walk = (value: unknown) => {
+      if (Array.isArray(value)) value.forEach(walk);
+      else if (value && typeof value === 'object') {
+        for (const [key, inner] of Object.entries(value)) {
+          if (key === 'access_token_expires_at') expiries.push(String(inner));
+          else walk(inner);
+        }
+      }
+    };
+
+    for (const file of recorded) {
+      walk(JSON.parse(readFileSync(join(dir, file), 'utf8')));
+    }
+
+    expect(expiries.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(expiries)).toEqual(new Set(['2099-01-01T00:00:00+00:00']));
+  });
+
+  it('records a person who signed in without a language: the API sends "locale": null', () => {
+    const me: Me = fixtures.meRiderNoLocale.body.user;
+
+    expect(me.locale).toBeNull();
+    expect(fixtures.authSessionRiderNoLocale.body.user.locale).toBeNull();
+    expect(fixtures.meRider.body.user.locale).toBe('en');
+  });
+
+  it('allows a place with no provider id: a reverse lookup of a bare coordinate has none', () => {
+    // The fake maps provider always answers with an id, so this shape cannot be recorded; the type is checked against the backend's DTO (`?string`).
+    const place: GeoPlace = {
+      place_id: null,
+      name: null,
+      address: '40.18, 44.51',
+      location: { lat: 40.18, lng: 44.51 },
+    };
+
+    expect(place.place_id).toBeNull();
+    expect(fixtures.geoReverse.body.place.place_id).toEqual(expect.any(String));
   });
 
   it('records the throttling answer the client turns into a retry delay', () => {

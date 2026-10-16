@@ -78,7 +78,13 @@ export async function send<T>(options: SendOptions): Promise<Exchange<T>> {
   let body: BodyInit | undefined;
 
   if (isFormData(options.body)) {
-    // The boundary is set by fetch; a hand-written Content-Type would break the upload.
+    // The boundary is set by fetch; a hand-written Content-Type (in any letter case) would break the upload.
+    for (const name of Object.keys(headers)) {
+      if (name.toLowerCase() === 'content-type') {
+        delete headers[name];
+      }
+    }
+
     body = options.body;
   } else if (options.body !== undefined) {
     body = JSON.stringify(options.body);

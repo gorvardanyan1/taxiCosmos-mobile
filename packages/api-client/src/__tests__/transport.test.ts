@@ -84,6 +84,7 @@ describe('send', () => {
     await run();
 
     expect(server.requests[0]?.body).toBe(form);
+    expect(server.requests[0]?.headers['content-type']).toBeUndefined();
   });
 
   it('throws the tagged error for a non-2xx answer, with the status mapped', async () => {

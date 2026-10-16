@@ -121,3 +121,14 @@ export async function renderWithApi<TResult>(
 }
 
 export { waitFor };
+
+/** Mounts another hook under the same client and cache: a second screen opening later. */
+export function mountAgain<TResult>(hook: () => TResult, shared: { client: ApiClient; queryClient: QueryClient }) {
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <ApiProvider client={shared.client} queryClient={shared.queryClient}>
+      {children}
+    </ApiProvider>
+  );
+
+  return renderHook(hook, { wrapper });
+}

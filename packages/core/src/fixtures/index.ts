@@ -39,7 +39,7 @@ export const authRefreshed = {
   headers: { 'x-ratelimit-limit': '30', 'x-ratelimit-remaining': '29' },
   body: {
     access_token: '1|fixture-access-token',
-    access_token_expires_at: '2026-10-16T08:34:16+00:00',
+    access_token_expires_at: '2099-01-01T00:00:00+00:00',
     refresh_token: 'fixture-refresh-token',
     user: {
       id: 1,
@@ -77,10 +77,10 @@ export const authSessionDriver = {
   headers: { 'x-ratelimit-limit': '10', 'x-ratelimit-remaining': '9' },
   body: {
     access_token: '1|fixture-access-token',
-    access_token_expires_at: '2026-10-16T08:34:17+00:00',
+    access_token_expires_at: '2099-01-01T00:00:00+00:00',
     refresh_token: 'fixture-refresh-token',
     user: {
-      id: 2,
+      id: 3,
       name: null,
       phone: '+374*****059',
       email: null,
@@ -132,7 +132,7 @@ export const authSessionRider = {
   headers: { 'x-ratelimit-limit': '10', 'x-ratelimit-remaining': '9' },
   body: {
     access_token: '1|fixture-access-token',
-    access_token_expires_at: '2026-10-16T08:34:16+00:00',
+    access_token_expires_at: '2099-01-01T00:00:00+00:00',
     refresh_token: 'fixture-refresh-token',
     user: {
       id: 1,
@@ -141,6 +141,44 @@ export const authSessionRider = {
       email: null,
       email_verified: false,
       locale: 'en',
+      timezone: null,
+      status: 'active',
+      modes: {
+        is_rider: true,
+        is_driver: false,
+      },
+      driver: null,
+      rider: {
+        rating: {
+          average: null,
+          count: 0,
+        },
+        outstanding_balance: {
+          amount: 0,
+          currency: 'AMD',
+        },
+        default_payment_method: null,
+      },
+    },
+    needs_phone: false,
+  },
+} satisfies { status: number; headers: Record<string, string>; body: AuthSession };
+
+/** auth.session.rider-no-locale: HTTP 200 with x-ratelimit-limit, x-ratelimit-remaining */
+export const authSessionRiderNoLocale = {
+  status: 200,
+  headers: { 'x-ratelimit-limit': '10', 'x-ratelimit-remaining': '9' },
+  body: {
+    access_token: '1|fixture-access-token',
+    access_token_expires_at: '2099-01-01T00:00:00+00:00',
+    refresh_token: 'fixture-refresh-token',
+    user: {
+      id: 2,
+      name: null,
+      phone: '+374*****056',
+      email: null,
+      email_verified: false,
+      locale: null,
       timezone: null,
       status: 'active',
       modes: {
@@ -175,7 +213,7 @@ export const devicesRegistered = {
       platform: 'android',
       locale: 'en',
       app_version: '0.1.0',
-      last_seen_at: '2026-10-16T07:34:17+00:00',
+      last_seen_at: '2026-10-16T09:08:59+00:00',
     },
   },
 } satisfies { status: number; headers: Record<string, string>; body: DeviceResponse };
@@ -209,7 +247,7 @@ export const driverBankAccountCreated = {
       swift: 'FIXTAM22',
       is_default: true,
       verified: false,
-      created_at: '2026-10-16T07:34:17+00:00',
+      created_at: '2026-10-16T09:08:59+00:00',
     },
   },
 } satisfies { status: number; headers: Record<string, string>; body: Data<DriverBankAccount> };
@@ -228,7 +266,7 @@ export const driverBankAccounts = {
         swift: 'FIXTAM22',
         is_default: true,
         verified: false,
-        created_at: '2026-10-16T07:34:17+00:00',
+        created_at: '2026-10-16T09:08:59+00:00',
       },
     ],
   },
@@ -246,7 +284,7 @@ export const driverDocumentCreated = {
       status: 'pending',
       rejection_reason: null,
       expires_at: '2027-11-20',
-      uploaded_at: '2026-10-16T07:34:17+00:00',
+      uploaded_at: '2026-10-16T09:08:59+00:00',
       reviewed_at: null,
     },
   },
@@ -265,7 +303,7 @@ export const driverDocuments = {
         status: 'pending',
         rejection_reason: null,
         expires_at: '2027-11-20',
-        uploaded_at: '2026-10-16T07:34:17+00:00',
+        uploaded_at: '2026-10-16T09:08:59+00:00',
         reviewed_at: null,
       },
     ],
@@ -428,8 +466,8 @@ export const fareEstimate = {
   status: 201,
   headers: { 'x-ratelimit-limit': '30', 'x-ratelimit-remaining': '29' },
   body: {
-    quote_id: '01a143a2-1013-7200-9a95-e8ac6efcb892',
-    expires_at: '2026-10-16T07:44:16+00:00',
+    quote_id: '01a143f8-c431-7025-b7a0-390276056416',
+    expires_at: '2026-10-16T09:18:59+00:00',
     zone: {
       id: 1,
       name: 'Fixture City',
@@ -550,7 +588,7 @@ export const meDriver = {
   headers: { 'x-ratelimit-limit': '120', 'x-ratelimit-remaining': '118' },
   body: {
     user: {
-      id: 2,
+      id: 3,
       name: 'Fixture Driver',
       phone: '+374*****059',
       email: null,
@@ -607,6 +645,40 @@ export const meRider = {
       email: null,
       email_verified: false,
       locale: 'en',
+      timezone: null,
+      status: 'active',
+      modes: {
+        is_rider: true,
+        is_driver: false,
+      },
+      driver: null,
+      rider: {
+        rating: {
+          average: null,
+          count: 0,
+        },
+        outstanding_balance: {
+          amount: 0,
+          currency: 'AMD',
+        },
+        default_payment_method: null,
+      },
+    },
+  },
+} satisfies { status: number; headers: Record<string, string>; body: MeResponse };
+
+/** me.rider-no-locale: HTTP 200 with x-ratelimit-limit, x-ratelimit-remaining */
+export const meRiderNoLocale = {
+  status: 200,
+  headers: { 'x-ratelimit-limit': '120', 'x-ratelimit-remaining': '119' },
+  body: {
+    user: {
+      id: 2,
+      name: null,
+      phone: '+374*****056',
+      email: null,
+      email_verified: false,
+      locale: null,
       timezone: null,
       status: 'active',
       modes: {
@@ -722,7 +794,7 @@ export const supportMessageCreated = {
       id: 2,
       from: 'you',
       body: 'Any update?',
-      created_at: '2026-10-16T07:34:17+00:00',
+      created_at: '2026-10-16T09:08:59+00:00',
       ticket_status: 'open',
     },
   },
@@ -743,8 +815,8 @@ export const supportTicketCreated = {
       trip_id: null,
       resolution: null,
       resolved_at: null,
-      last_message_at: '2026-10-16T07:34:16+00:00',
-      created_at: '2026-10-16T07:34:16+00:00',
+      last_message_at: '2026-10-16T09:08:59+00:00',
+      created_at: '2026-10-16T09:08:59+00:00',
     },
   },
 } satisfies { status: number; headers: Record<string, string>; body: Data<SupportTicket> };
@@ -765,8 +837,8 @@ export const supportTicketList = {
         trip_id: null,
         resolution: null,
         resolved_at: null,
-        last_message_at: '2026-10-16T07:34:16+00:00',
-        created_at: '2026-10-16T07:34:16+00:00',
+        last_message_at: '2026-10-16T09:08:59+00:00',
+        created_at: '2026-10-16T09:08:59+00:00',
       },
     ],
     meta: {
@@ -793,14 +865,14 @@ export const supportTicketShow = {
       trip_id: null,
       resolution: null,
       resolved_at: null,
-      last_message_at: '2026-10-16T07:34:16+00:00',
-      created_at: '2026-10-16T07:34:16+00:00',
+      last_message_at: '2026-10-16T09:08:59+00:00',
+      created_at: '2026-10-16T09:08:59+00:00',
       messages: [
         {
           id: 1,
           from: 'you',
           body: 'Why was the price higher than estimated?',
-          created_at: '2026-10-16T07:34:16+00:00',
+          created_at: '2026-10-16T09:08:59+00:00',
         },
       ],
     },

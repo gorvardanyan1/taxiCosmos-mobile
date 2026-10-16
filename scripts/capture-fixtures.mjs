@@ -27,9 +27,11 @@ const TYPES = {
   'auth.otp-requested': 'OtpRequested',
   'auth.session.rider': 'AuthSession',
   'auth.session.driver': 'AuthSession',
+  'auth.session.rider-no-locale': 'AuthSession',
   'auth.refreshed': 'AuthSession',
   'me.rider': 'MeResponse',
   'me.rider-updated': 'MeResponse',
+  'me.rider-no-locale': 'MeResponse',
   'me.driver': 'MeResponse',
   'saved-places.created': 'Data<SavedPlace>',
   'saved-places.list': 'Data<SavedPlace[]>',
@@ -102,11 +104,14 @@ async function call(name, method, path, { body, token, headers = {}, form, query
   return { status: response.status, body: json, headers: header };
 }
 
-async function signIn(app, phone, name) {
+async function signIn(app, phone, name, { locale = 'en', sessionName = `auth.session.${app}` } = {}) {
   const device = `fixture-${app}-device-01`;
-  await call(app === 'rider' ? 'auth.otp-requested' : null, 'POST', '/auth/otp/request', { body: { phone, app } });
-  const session = await call(`auth.session.${app}`, 'POST', '/auth/otp/verify', {
-    body: { phone, code: '123456', app, device_id: device, locale: 'en' },
+  await call(app === 'rider' && locale === 'en' ? 'auth.otp-requested' : null, 'POST', '/auth/otp/request', {
+    body: { phone, app },
+  });
+  // `locale` is optional in the API: leaving it out is a real sign-in, and the person's language stays unset (null) in /me.
+  const session = await call(sessionName, 'POST', '/auth/otp/verify', {
+    body: { phone, code: '123456', app, device_id: device, ...(locale === null ? {} : { locale }) },
   });
   if (session.status !== 200) throw new Error(`sign-in failed: ${JSON.stringify(session.body)}`);
   if (name) await call(null, 'PATCH', '/me', { token: session.body.access_token, body: { name } });
@@ -227,6 +232,13 @@ async function main() {
       body: { phone: '+37491770058', code: '000000', app: 'rider', device_id: 'fixture-rider-device-01' },
     });
 
+    // ---- a rider who signed in without choosing a language: /me has "locale": null ----
+    const noLocale = await signIn('rider', '+37491770056', null, {
+      locale: null,
+      sessionName: 'auth.session.rider-no-locale',
+    });
+    await call('me.rider-no-locale', 'GET', '/me', { token: noLocale.access_token });
+
     // ---- driver ----
     const driver = await signIn('driver', '+37491770059', 'Fixture Driver');
     tokens.driver = driver;
@@ -290,7 +302,11 @@ async function main() {
   write();
 }
 
-/** Sign-in tokens never reach a fixture. */
+/**
+ * Sign-in tokens never reach a fixture, and neither does a clock reading that changes how the app behaves. The access token's expiry is
+ * replaced by a far-future constant: recorded as it was, it would "expire" in an hour and every test that signs in with it would start
+ * to renew the session first (that is exactly how a test went red the day after recording).
+ */
 function sanitise(value) {
   if (Array.isArray(value)) return value.map(sanitise);
   if (value && typeof value === 'object') {
@@ -298,6 +314,7 @@ function sanitise(value) {
       Object.entries(value).map(([key, v]) => {
         if (key === 'access_token') return [key, '1|fixture-access-token'];
         if (key === 'refresh_token') return [key, 'fixture-refresh-token'];
+        if (key === 'access_token_expires_at') return [key, '2099-01-01T00:00:00+00:00'];
         return [key, sanitise(v)];
       }),
     );

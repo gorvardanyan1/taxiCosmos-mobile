@@ -2,7 +2,13 @@ import { ApiRequestError, fieldError, getApiError, retryAfterSecondsOf } from '@
 import * as fixtures from '@taxikosmos/core/fixtures';
 
 import { isAbortError } from '../transport';
-import { createMemoryOperationStore, createMemoryTokenStore, type OperationStore } from '../storage';
+import {
+  createMemoryKeyValueStorage,
+  createMemoryOperationStore,
+  createMemoryTokenStore,
+  createStorageOperationStore,
+  type OperationStore,
+} from '../storage';
 import { BASE_URL, empty, makeClient, ok, pair, replyWith, sessionPayload } from './helpers';
 
 const unauthenticated = replyWith(fixtures.errorUnauthenticated);
@@ -354,6 +360,100 @@ describe('a write retried after a dropped connection reuses the same idempotency
   });
 });
 
+describe('a signed-out person leaves no actions behind on the device', () => {
+  /** Operation records live on a storage we can look into. */
+  function lookable() {
+    const storage = createMemoryKeyValueStorage();
+
+    return {
+      storage,
+      operations: createStorageOperationStore(storage),
+      keys: async () => await storage.getItem('taxikosmos.operation.index'),
+    };
+  }
+
+  it('signing out removes the stored answers of finished actions (they can hold names, addresses and bank details)', async () => {
+    const { operations, keys, storage } = lookable();
+    const { client } = makeClient([ok({ data: { holder: 'Private Name' } }, 201), empty()], { operations });
+    await client.post('/driver/bank-accounts', { operation: 'bank:1' });
+    expect(await keys()).not.toBeNull();
+
+    await client.session.clear();
+
+    expect(await keys()).toBeNull();
+    expect(await storage.getItem('taxikosmos.operation.bank_3a_1')).toBeNull();
+  });
+
+  it('the server ending the session does the same', async () => {
+    const { operations, keys } = lookable();
+    const { client } = makeClient(
+      [
+        ok({}, 201),
+        unauthenticated,
+        { status: 401, body: { message: 'The session has ended. Please sign in again.' } },
+      ],
+      { operations },
+    );
+    await client.post('/x', { operation: 'op' });
+    await caught(client.get('/me'));
+
+    expect(client.session.isSignedIn).toBe(false);
+    expect(await keys()).toBeNull();
+  });
+
+  it("a new sign-in forgets the previous person's actions", async () => {
+    const { operations, keys } = lookable();
+    const { client } = makeClient([ok({}, 201)], { operations });
+    await client.post('/x', { operation: 'op' });
+    expect(await keys()).not.toBeNull();
+
+    await client.session.start(sessionPayload());
+
+    expect(await keys()).toBeNull();
+  });
+
+  it('records left by an earlier run are removed when the app starts and finds nobody signed in', async () => {
+    const { operations, keys } = lookable();
+    await operations.set('leftover', {
+      key: 'k',
+      state: 'succeeded',
+      createdAt: Date.now(),
+      response: { status: 201, data: { holder: 'Private Name' } },
+    });
+    const { client } = makeClient([], { operations, signedIn: null });
+    await client.session.load();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(await keys()).toBeNull();
+  });
+
+  it('keeps them while the same person stays signed in, also across an app restart', async () => {
+    const { operations, keys } = lookable();
+    const tokens = createMemoryTokenStore(pair());
+    const first = makeClient([ok({}, 201)], { operations, tokens });
+    await first.client.post('/x', { operation: 'op' });
+    const second = makeClient([], { operations, tokens });
+    await second.client.session.load();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(await keys()).not.toBeNull();
+  });
+
+  it('an action that finishes after the person signed out does not write its answer back', async () => {
+    const { operations, keys } = lookable();
+    let release: (response: Response) => void = () => undefined;
+    const slow = jest.fn(() => new Promise<Response>((resolve) => (release = resolve))) as unknown as typeof fetch;
+    const { client } = makeClient([], { operations, fetch: slow });
+    const pending = client.post('/driver/bank-accounts', { operation: 'bank:2' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await client.session.clear();
+    release(new Response(JSON.stringify({ data: { holder: 'Private Name' } }), { status: 201 }));
+    await pending;
+
+    expect(await keys()).toBeNull();
+  });
+});
+
 describe('an action that already succeeded does not go out again', () => {
   it('returns the stored answer for a repeat of the same action without a second request', async () => {
     const { client, server } = makeClient([ok({ data: { id: 1 } }, 201)]);
@@ -407,6 +507,7 @@ describe('an action that already succeeded does not go out again', () => {
       get: async () => null,
       set: async () => undefined,
       delete: async () => undefined,
+      clear: async () => undefined,
     };
     const { client, server } = makeClient([ok({}, 201), ok({}, 201)], { operations: forgetful });
     await client.post('/x', { operation: 'op' });

@@ -80,6 +80,8 @@ export class ApiClient {
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly getLocale: (() => Locale) | undefined;
   private readonly inFlight = new Map<string, Promise<ApiResponse<unknown>>>();
+  /** Bumped whenever the stored actions are forgotten; an action that finishes after that must not write itself back. */
+  private epoch = 0;
 
   constructor(options: ApiClientOptions) {
     this.options = {
@@ -97,6 +99,7 @@ export class ApiClient {
       store: options.tokens,
       now: this.now,
       refresh: (refreshToken) => this.refreshSession(refreshToken),
+      onForget: () => this.forgetActions(),
       ...(options.onSessionEnded ? { onEnded: options.onSessionEnded } : {}),
     });
   }
@@ -133,6 +136,12 @@ export class ApiClient {
     return this.attempt<T>(method, path, options, options.idempotencyKey ?? this.newKey());
   }
 
+  /** The stored actions of whoever was signed in are deleted; an action still in flight must not write itself back afterwards. */
+  private async forgetActions(): Promise<void> {
+    this.epoch++;
+    await this.operations.clear();
+  }
+
   // ---- idempotent user actions ----
 
   private runOperation<T>(
@@ -162,6 +171,7 @@ export class ApiClient {
     options: RequestOptions,
     operation: string,
   ): Promise<ApiResponse<T>> {
+    const epoch = this.epoch;
     const stored = await this.operations.get(operation);
     const fresh = stored !== null && this.now() - stored.createdAt < this.options.operationTtlMs;
 
@@ -183,12 +193,16 @@ export class ApiClient {
 
     try {
       const response = await this.attempt<T>(method, path, options, key);
-      await this.operations.set(operation, {
-        key,
-        state: 'succeeded',
-        createdAt: this.now(),
-        response: { status: response.status, data: response.data },
-      });
+
+      // Signed out while it was in flight: the answer may hold the previous person's data, so it is not kept.
+      if (epoch === this.epoch) {
+        await this.operations.set(operation, {
+          key,
+          state: 'succeeded',
+          createdAt: this.now(),
+          response: { status: response.status, data: response.data },
+        });
+      }
 
       return response;
     } catch (error) {

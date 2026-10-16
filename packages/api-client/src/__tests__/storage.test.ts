@@ -118,18 +118,27 @@ describe('createStorageOperationStore', () => {
   });
 
   it('keeps the key (the part that prevents a duplicate) when the platform refuses the stored answer as too large', async () => {
-    const written: string[] = [];
+    const written: Record<string, string> = {};
     const picky: KeyValueStorage = {
       getItem: async () => null,
       removeItem: async () => undefined,
-      setItem: async (_key, value) => {
+      setItem: async (key, value) => {
         if (value.length > 100) throw new Error('value too large');
-        written.push(value);
+        written[key] = value;
       },
     };
-    await createStorageOperationStore(picky).set('op', { ...record, response: { status: 201, data: 'x'.repeat(500) } });
+    await createStorageOperationStore(picky, { now: () => 5_000 }).set('op', {
+      ...record,
+      response: { status: 201, data: 'x'.repeat(500) },
+    });
 
-    expect(JSON.parse(written[0] as string)).toEqual({ key: 'key-00000001', state: 'succeeded', createdAt: 1_000 });
+    expect(JSON.parse(written['taxikosmos.operation.op'] as string)).toEqual({
+      key: 'key-00000001',
+      state: 'succeeded',
+      createdAt: 1_000,
+    });
+    // The index entry that makes the record deletable on sign-out was written too.
+    expect(JSON.parse(written['taxikosmos.operation.index'] as string)).toEqual([['op', 1_000]]);
   });
 
   it('lets a failure to store a record with no answer through', async () => {
@@ -140,8 +149,142 @@ describe('createStorageOperationStore', () => {
     };
 
     await expect(
-      createStorageOperationStore(broken).set('op', { key: 'k', state: 'pending', createdAt: 1 }),
+      createStorageOperationStore(broken, { now: () => 5_000 }).set('op', { key: 'k', state: 'pending', createdAt: 1 }),
     ).rejects.toThrow('disk full');
+  });
+});
+
+describe('createStorageOperationStore: nothing is kept for good', () => {
+  const done = (createdAt: number): OperationRecord => ({
+    key: `key-${createdAt}`,
+    state: 'succeeded',
+    createdAt,
+    response: { status: 201, data: { holder: 'Private Name' } },
+  });
+  const keysOf = async (storage: KeyValueStorage & { dump?: () => string[] }) => storage.dump?.() ?? [];
+
+  /** A storage that can list what it holds, which the real secure store cannot. */
+  function listingStorage() {
+    const inner = createMemoryKeyValueStorage();
+    const keys = new Set<string>();
+
+    return {
+      getItem: inner.getItem,
+      setItem: async (key: string, value: string) => {
+        keys.add(key);
+        await inner.setItem(key, value);
+      },
+      removeItem: async (key: string) => {
+        keys.delete(key);
+        await inner.removeItem(key);
+      },
+      dump: () => [...keys].sort(),
+    };
+  }
+
+  it('lists the records in an index, since the secure store cannot list its keys', async () => {
+    const storage = listingStorage();
+    const store = createStorageOperationStore(storage, { now: () => 5_000 });
+    await store.set('ticket:1', done(1_000));
+    await store.set('bank:1', done(2_000));
+
+    expect(await keysOf(storage)).toEqual([
+      'taxikosmos.operation.bank_3a_1',
+      'taxikosmos.operation.index',
+      'taxikosmos.operation.ticket_3a_1',
+    ]);
+  });
+
+  it('clear() deletes every record and the index, so a signed-out person leaves nothing behind', async () => {
+    const storage = listingStorage();
+    const store = createStorageOperationStore(storage, { now: () => 5_000 });
+    await store.set('ticket:1', done(1_000));
+    await store.set('bank:1', done(2_000));
+    await store.clear();
+
+    expect(await keysOf(storage)).toEqual([]);
+    expect(await store.get('ticket:1')).toBeNull();
+  });
+
+  it('can finish a clear() that was interrupted', async () => {
+    const storage = listingStorage();
+    const store = createStorageOperationStore(storage, { now: () => 5_000 });
+    await store.set('a', done(1_000));
+    await store.set('b', done(2_000));
+    // Simulates a crash after the first record was removed but before the index was.
+    await storage.removeItem('taxikosmos.operation.a');
+    await store.clear();
+
+    expect(await keysOf(storage)).toEqual([]);
+  });
+
+  it('deletes records older than the retention time whenever something is written', async () => {
+    let now = 10_000_000;
+    const storage = listingStorage();
+    const store = createStorageOperationStore(storage, { retentionMs: 60_000, now: () => now });
+    await store.set('old', done(now));
+    now += 61_000;
+    await store.set('new', done(now));
+
+    expect(await store.get('old')).toBeNull();
+    expect(await store.get('new')).not.toBeNull();
+    expect(await keysOf(storage)).toEqual(['taxikosmos.operation.index', 'taxikosmos.operation.new']);
+  });
+
+  it('keeps the record being rewritten even when it is the old one (a retry of a long-pending action)', async () => {
+    let now = 10_000_000;
+    const store = createStorageOperationStore(createMemoryKeyValueStorage(), { retentionMs: 60_000, now: () => now });
+    await store.set('op', { key: 'k', state: 'pending', createdAt: now });
+    now += 61_000;
+    await store.set('op', done(now));
+
+    expect((await store.get('op'))?.state).toBe('succeeded');
+  });
+
+  it('removes a deleted record from the index too', async () => {
+    const storage = listingStorage();
+    const store = createStorageOperationStore(storage, { now: () => 5_000 });
+    await store.set('a', done(1_000));
+    await store.delete('a');
+
+    expect(await keysOf(storage)).toEqual([]);
+  });
+
+  it('queues its calls: twenty actions finishing together are all listed, and one clear() removes them all', async () => {
+    const storage = listingStorage();
+    const store = createStorageOperationStore(storage, { now: () => 5_000 });
+    await Promise.all(Array.from({ length: 20 }, (_, n) => store.set(`op:${n}`, done(1_000 + n))));
+    expect((await keysOf(storage)).length).toBe(21);
+
+    await store.clear();
+    expect(await keysOf(storage)).toEqual([]);
+  });
+
+  it('copes with an index that was damaged: it starts a new one', async () => {
+    const storage = listingStorage();
+    await storage.setItem('taxikosmos.operation.index', '{"broken');
+    const store = createStorageOperationStore(storage, { now: () => 5_000 });
+    await store.set('a', done(1_000));
+
+    expect(await store.get('a')).not.toBeNull();
+    await storage.setItem('taxikosmos.operation.index', JSON.stringify({ not: 'a list' }));
+    await store.clear();
+    expect(await keysOf(storage)).toEqual(['taxikosmos.operation.a']);
+  });
+
+  it('ignores index entries that are not [name, time] pairs', async () => {
+    const storage = listingStorage();
+    await storage.setItem(
+      'taxikosmos.operation.index',
+      JSON.stringify([['ok', 1], 'junk', [3, 'x'], ['also-ok', 'late']]),
+    );
+    const store = createStorageOperationStore(storage, { now: () => 5_000 });
+    await store.set('a', done(1_000));
+
+    expect(JSON.parse((await storage.getItem('taxikosmos.operation.index')) as string)).toEqual([
+      ['ok', 1],
+      ['a', 1_000],
+    ]);
   });
 });
 

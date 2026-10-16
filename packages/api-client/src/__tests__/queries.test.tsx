@@ -19,8 +19,8 @@ import {
   shouldRetryQuery,
   retryDelay,
 } from '..';
-import { replyWith } from './helpers';
-import { renderWithApi, waitFor } from './react-helpers';
+import { makeClient, replyWith } from './helpers';
+import { mountAgain, renderWithApi, waitFor } from './react-helpers';
 
 describe('reads wait for a signed-in session', () => {
   it('sends nothing while signed out, and says so', async () => {
@@ -198,6 +198,72 @@ describe('address search', () => {
     await waitFor(() => expect(result.current.data).toEqual(fixtures.geoAutocomplete.body.suggestions));
 
     expect(server.requests).toHaveLength(2);
+  });
+});
+
+describe('what stays on screen and what is not paid for twice', () => {
+  it('address search results stay fresh for five minutes: reopening the search does not ask the maps service again', async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    try {
+      const useSearch = () => useGeoAutocomplete({ q: 'Abovyan' });
+      const first = await renderWithApi(useSearch, [
+        replyWith(fixtures.geoAutocomplete),
+        replyWith(fixtures.geoAutocomplete),
+      ]);
+      await waitFor(() => expect(first.result.current.isSuccess).toBe(true));
+      first.unmount();
+
+      jest.setSystemTime(Date.now() + 4 * 60_000);
+      const soon = mountAgain(useSearch, first);
+      await waitFor(() => expect(soon.result.current.isSuccess).toBe(true));
+      expect(first.server.requests).toHaveLength(1);
+      soon.unmount();
+
+      jest.setSystemTime(Date.now() + 2 * 60_000);
+      const later = mountAgain(useSearch, first);
+      await waitFor(() => expect(first.server.requests).toHaveLength(2));
+      later.unmount();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('the ticket list keeps showing the current page while the next page loads', async () => {
+    const page2 = {
+      ...fixtures.supportTicketList.body,
+      data: [],
+      meta: { ...fixtures.supportTicketList.body.meta, current_page: 2 },
+    };
+    const release: { current: (response: Response) => void } = { current: () => undefined };
+    const json = (body: unknown) =>
+      new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+    const fetchStub = jest.fn(async (input: RequestInfo | URL) =>
+      new URL(String(input)).searchParams.get('page') === '2'
+        ? new Promise<Response>((resolve) => (release.current = resolve))
+        : json(fixtures.supportTicketList.body),
+    ) as unknown as typeof fetch;
+    const { client } = makeClient([], { fetch: fetchStub });
+
+    let page = 1;
+    const { result, rerender } = await renderWithApi(
+      () => {
+        const tickets = useSupportTickets(page);
+
+        return { current: tickets.data?.meta.current_page, showingPreviousPage: tickets.isPlaceholderData };
+      },
+      [],
+      { client },
+    );
+    await waitFor(() => expect(result.current.current).toBe(1));
+
+    page = 2;
+    rerender({});
+    expect(result.current).toEqual({ current: 1, showingPreviousPage: true });
+    // Let the answer arrive only once the second page was really requested.
+    await waitFor(() => expect(fetchStub).toHaveBeenCalledTimes(2));
+
+    release.current(json(page2));
+    await waitFor(() => expect(result.current).toEqual({ current: 2, showingPreviousPage: false }));
   });
 });
 
