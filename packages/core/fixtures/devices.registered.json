@@ -1,0 +1,17 @@
+{
+  "status": 201,
+  "headers": {
+    "x-ratelimit-limit": "30",
+    "x-ratelimit-remaining": "29"
+  },
+  "body": {
+    "device": {
+      "id": 1,
+      "app": "rider",
+      "platform": "android",
+      "locale": "en",
+      "app_version": "0.1.0",
+      "last_seen_at": "2026-10-16T09:08:59+00:00"
+    }
+  }
+}

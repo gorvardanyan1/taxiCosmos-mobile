@@ -1,0 +1,29 @@
+{
+  "status": 200,
+  "headers": {
+    "x-ratelimit-limit": "60",
+    "x-ratelimit-remaining": "59"
+  },
+  "body": {
+    "suggestions": [
+      {
+        "place_id": "fake-abovyan-1",
+        "text": "Abovyan street 1, Yerevan",
+        "primary_text": "Abovyan street 1",
+        "secondary_text": "Yerevan"
+      },
+      {
+        "place_id": "fake-abovyan-2",
+        "text": "Abovyan street 2, Yerevan",
+        "primary_text": "Abovyan street 2",
+        "secondary_text": "Yerevan"
+      },
+      {
+        "place_id": "fake-abovyan-3",
+        "text": "Abovyan street 3, Yerevan",
+        "primary_text": "Abovyan street 3",
+        "secondary_text": "Yerevan"
+      }
+    ]
+  }
+}

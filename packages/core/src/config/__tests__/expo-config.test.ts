@@ -4,6 +4,7 @@ import { buildExpoConfig, readPublicConfig } from '../expo-config.ts';
 const PRODUCTION = {
   APP_ENV: 'production',
   API_URL: 'https://api.taxikosmos.am',
+  REALTIME_URL: 'wss://realtime.taxikosmos.am',
   SENTRY_DSN: 'https://key@o1.ingest.sentry.io/2',
   STRIPE_PUBLISHABLE_KEY: 'pk_live_public',
   GOOGLE_MAPS_ANDROID_API_KEY: 'AIza-maps',
@@ -61,6 +62,7 @@ describe('buildExpoConfig', () => {
       app: 'rider',
       environment: 'production',
       apiUrl: 'https://api.taxikosmos.am',
+      realtimeUrl: 'wss://realtime.taxikosmos.am',
       sentryDsn: PRODUCTION.SENTRY_DSN,
       stripePublishableKey: 'pk_live_public',
     });
@@ -86,7 +88,15 @@ describe('buildExpoConfig', () => {
 
     expect(pluginNames(PRODUCTION)).toContain('@sentry/react-native/expo');
     expect(pluginNames({ ...PRODUCTION, SENTRY_PROJECT: undefined })).not.toContain('@sentry/react-native/expo');
-    expect(pluginNames({})).toEqual(['expo-router', 'expo-splash-screen']);
+    expect(pluginNames({})).toEqual(['expo-router', 'expo-secure-store', 'expo-splash-screen']);
+  });
+
+  it('installs the secure-store plugin: it keeps the session out of Android cloud backups', () => {
+    const names = (buildExpoConfig('driver', {}).plugins ?? []).map((plugin) =>
+      Array.isArray(plugin) ? plugin[0] : plugin,
+    );
+
+    expect(names).toContain('expo-secure-store');
   });
 
   it('leaves out the maps key, EAS project id and owner when they are not set', () => {
@@ -110,6 +120,7 @@ describe('readPublicConfig', () => {
       app: 'driver',
       environment: 'staging',
       apiUrl: 'https://staging.taxikosmos.am',
+      realtimeUrl: null,
       sentryDsn: null,
       stripePublishableKey: null,
     });
@@ -128,6 +139,16 @@ describe('readPublicConfig', () => {
 
     expect(config.sentryDsn).toBeNull();
     expect(config.stripePublishableKey).toBeNull();
+  });
+
+  it('reads back the realtime address when the build has one', () => {
+    const extra = buildExpoConfig('rider', {
+      APP_ENV: 'staging',
+      API_URL: 'https://staging.taxikosmos.am',
+      REALTIME_URL: 'wss://realtime-staging.taxikosmos.am',
+    }).extra;
+
+    expect(readPublicConfig(extra).realtimeUrl).toBe('wss://realtime-staging.taxikosmos.am');
   });
 
   it.each([

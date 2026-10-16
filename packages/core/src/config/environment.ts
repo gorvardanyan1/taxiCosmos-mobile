@@ -17,6 +17,8 @@ export interface ResolvedEnvironment {
   environment: AppEnvironment;
   /** Origin of the Laravel backend, without a trailing slash; the API client adds `/api/v1`. */
   apiUrl: string;
+  /** Where the realtime (Socket.io) service listens, or `null` until it exists: the apps then poll over REST. */
+  realtimeUrl: string | null;
   sentryDsn: string | null;
   stripePublishableKey: string | null;
   /** Android Google Maps key, written into the native manifest at build time (used from M3-T1). */
@@ -38,6 +40,7 @@ export function resolveEnvironment(env: EnvironmentVariables): ResolvedEnvironme
   return {
     environment,
     apiUrl: parseApiUrl(value(env, 'API_URL'), environment),
+    realtimeUrl: parseRealtimeUrl(value(env, 'REALTIME_URL'), environment),
     sentryDsn: parseSentryDsn(value(env, 'SENTRY_DSN'), environment),
     stripePublishableKey: parseStripeKey(value(env, 'STRIPE_PUBLISHABLE_KEY'), environment),
     googleMapsAndroidApiKey: value(env, 'GOOGLE_MAPS_ANDROID_API_KEY'),
@@ -86,6 +89,27 @@ function parseApiUrl(raw: string | null, environment: AppEnvironment): string {
   return url.toString().replace(/\/+$/, '');
 }
 
+function parseRealtimeUrl(raw: string | null, environment: AppEnvironment): string | null {
+  if (raw === null) {
+    return null;
+  }
+
+  const url = parseUrl(raw, 'REALTIME_URL', ['http:', 'https:', 'ws:', 'wss:']);
+  const secure = url.protocol === 'https:' || url.protocol === 'wss:';
+
+  if (!secure && environment !== 'development') {
+    throw new ConfigError(`REALTIME_URL must use https or wss for a ${environment} build.`);
+  }
+
+  if (url.search || url.hash || url.username || url.password) {
+    throw new ConfigError(
+      'REALTIME_URL must be a plain address such as wss://realtime.example.com, without credentials, query or fragment.',
+    );
+  }
+
+  return url.toString().replace(/\/+$/, '');
+}
+
 function parseSentryDsn(raw: string | null, environment: AppEnvironment): string | null {
   if (raw === null) {
     // A production build must report crashes; development and staging may run without Sentry.
@@ -128,7 +152,7 @@ function parseStripeKey(raw: string | null, environment: AppEnvironment): string
   return raw;
 }
 
-function parseUrl(raw: string, name: string): URL {
+function parseUrl(raw: string, name: string, protocols: readonly string[] = ['http:', 'https:']): URL {
   let url: URL;
 
   try {
@@ -137,8 +161,8 @@ function parseUrl(raw: string, name: string): URL {
     throw new ConfigError(`${name} is not a valid URL.`);
   }
 
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    throw new ConfigError(`${name} must be an http(s) URL.`);
+  if (!protocols.includes(url.protocol)) {
+    throw new ConfigError(`${name} must be ${protocols.length > 2 ? 'an http(s) or ws(s)' : 'an http(s)'} URL.`);
   }
 
   return url;

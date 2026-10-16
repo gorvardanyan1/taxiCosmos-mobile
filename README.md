@@ -8,12 +8,13 @@ apps/
   rider/          Expo app: com.taxikosmos.rider, taxirider://
   driver/         Expo app: com.taxikosmos.driver, taxidriver://
 packages/
-  core/           framework-free shared code: environment and identity rules, API types (M1-T2)
-  api-client/     typed /api/v1 client and realtime socket (M1-T2)
+  core/           framework-free shared code: build config, API types, errors, phone / money / idempotency helpers
+  api-client/     typed /api/v1 client, session, realtime, React Query hooks
   ui/             design system ported from RiderTaxiAppTemplate (M1-T3)
 docs/
   development.md  run the apps against the local backend
   environments.md development / staging / production, variables and secrets
+  api-client.md   the API client, error model, idempotency, realtime, fixtures
   testing.md      Jest + React Native Testing Library, Maestro
 maestro/
   flows/          end-to-end flows (YAML), run on a device with the development build

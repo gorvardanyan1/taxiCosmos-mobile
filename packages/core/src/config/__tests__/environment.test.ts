@@ -11,6 +11,7 @@ describe('resolveEnvironment', () => {
     expect(resolveEnvironment({})).toEqual({
       environment: 'development',
       apiUrl: LOCAL_API_URL,
+      realtimeUrl: null,
       sentryDsn: null,
       stripePublishableKey: null,
       googleMapsAndroidApiKey: null,
@@ -100,6 +101,51 @@ describe('resolveEnvironment', () => {
       'pk_live_abc',
     );
     expect(resolveEnvironment({ STRIPE_PUBLISHABLE_KEY: 'pk_test_abc' }).stripePublishableKey).toBe('pk_test_abc');
+  });
+
+  describe('REALTIME_URL (the Socket.io service; unset means the apps poll over REST)', () => {
+    it('is optional in every environment', () => {
+      expect(resolveEnvironment({ ...PRODUCTION }).realtimeUrl).toBeNull();
+      expect(resolveEnvironment({}).realtimeUrl).toBeNull();
+    });
+
+    it('accepts a secure address in production and normalises it without a trailing slash', () => {
+      expect(resolveEnvironment({ ...PRODUCTION, REALTIME_URL: 'wss://realtime.taxikosmos.am/' }).realtimeUrl).toBe(
+        'wss://realtime.taxikosmos.am',
+      );
+      expect(resolveEnvironment({ ...PRODUCTION, REALTIME_URL: 'https://realtime.taxikosmos.am' }).realtimeUrl).toBe(
+        'https://realtime.taxikosmos.am',
+      );
+    });
+
+    it.each(['staging', 'production'])('refuses an insecure address for a %s build', (environment) => {
+      for (const url of ['ws://realtime.taxikosmos.am', 'http://realtime.taxikosmos.am']) {
+        expect(() => resolveEnvironment({ ...PRODUCTION, APP_ENV: environment, REALTIME_URL: url })).toThrow(
+          `REALTIME_URL must use https or wss for a ${environment} build.`,
+        );
+      }
+    });
+
+    it('allows a plain address in development, for a service on the local network', () => {
+      expect(resolveEnvironment({ REALTIME_URL: 'ws://10.0.2.2:3000' }).realtimeUrl).toBe('ws://10.0.2.2:3000');
+    });
+
+    it.each([
+      'not a url',
+      'ftp://realtime.example.com',
+      'wss://user:pass@realtime.example.com',
+      'wss://realtime.example.com?token=1',
+      'wss://realtime.example.com#x',
+    ])('refuses the unusable address %p', (url) => {
+      expect(() => resolveEnvironment({ REALTIME_URL: url })).toThrow(ConfigError);
+    });
+
+    it('names the supported schemes when refusing one', () => {
+      expect(() => resolveEnvironment({ REALTIME_URL: 'ftp://realtime.example.com' })).toThrow(
+        'REALTIME_URL must be an http(s) or ws(s) URL.',
+      );
+      expect(() => resolveEnvironment({ API_URL: 'ftp://api.example.com' })).toThrow('API_URL must be an http(s) URL.');
+    });
   });
 
   it('passes the Android maps key through when set', () => {

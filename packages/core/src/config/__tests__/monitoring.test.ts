@@ -5,6 +5,7 @@ const config = (overrides: Partial<PublicAppConfig>): PublicAppConfig => ({
   app: 'rider',
   environment: 'development',
   apiUrl: 'http://localhost:8000',
+  realtimeUrl: null,
   sentryDsn: null,
   stripePublishableKey: null,
   ...overrides,

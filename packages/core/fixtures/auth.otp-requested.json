@@ -1,0 +1,11 @@
+{
+  "status": 202,
+  "headers": {
+    "x-ratelimit-limit": "1",
+    "x-ratelimit-remaining": "0"
+  },
+  "body": {
+    "message": "If the number can receive a code, it is on its way.",
+    "expires_in": 300
+  }
+}

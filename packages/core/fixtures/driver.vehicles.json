@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "headers": {
+    "x-ratelimit-limit": "30",
+    "x-ratelimit-remaining": "26"
+  },
+  "body": {
+    "data": [
+      {
+        "id": 1,
+        "make": "Toyota",
+        "model": "Camry",
+        "year": 2021,
+        "plate_number": "FIX123",
+        "color": "Silver",
+        "vehicle_class": "economy",
+        "status": "pending_review",
+        "is_primary": false
+      }
+    ]
+  }
+}

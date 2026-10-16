@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "headers": {
+    "x-ratelimit-limit": "60",
+    "x-ratelimit-remaining": "56"
+  },
+  "body": {
+    "route": {
+      "distance_meters": 3638,
+      "duration_seconds": 437,
+      "polyline": "_tftFojtnG_|B_|B"
+    }
+  }
+}

@@ -28,6 +28,19 @@ Rules for every screen and component (checked in `/review-task`):
   permission denied.
 - Shared packages (`core`, later `api-client`) carry the coverage thresholds in their `jest.config.cjs`.
 
+### Testing hooks and the API client
+
+`packages/api-client/src/__tests__/` shows the patterns; read `helpers.ts` and `react-helpers.tsx` first.
+
+- Answer from a scripted `fetch` (`scriptedFetch`, `makeClient`) using the **recorded real responses** from `@taxikosmos/core/fixtures`, not invented JSON.
+- `renderWithApi(hook, script)` renders under the real `<ApiProvider>` with a fast query client and waits for the saved session to load.
+- After a mutation, **`await waitFor(...)` its state** (`isError`, `isSuccess`): TanStack Query publishes the final state a tick after `mutateAsync` settles.
+- TanStack re-renders a component only for the result properties it read **while rendering**. Return what you assert from the hook function
+  (`return { locale: me.data?.locale }`) instead of reading `result.current.me.data` afterwards. The test query client sets
+  `notifyOnChangeProps: 'all'` and routes notifications through `act` (`jest.setup.ts`), which keeps the output free of `act()` warnings.
+- Give the test query client `gcTime: Infinity` for mutations, or the 5-minute cleanup timer keeps Jest from exiting.
+- Contract changes show up in two places: `pnpm typecheck` (a recorded response no longer satisfies a type) and the resource tests.
+
 ## Maestro
 
 Flows are YAML files in `maestro/flows/`. Each starts with `appId: ${APP_ID}` so one flow serves the rider and the

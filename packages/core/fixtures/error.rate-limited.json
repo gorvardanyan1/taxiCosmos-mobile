@@ -1,0 +1,11 @@
+{
+  "status": 429,
+  "headers": {
+    "retry-after": "60",
+    "x-ratelimit-limit": "1",
+    "x-ratelimit-remaining": "0"
+  },
+  "body": {
+    "message": "Too Many Attempts."
+  }
+}

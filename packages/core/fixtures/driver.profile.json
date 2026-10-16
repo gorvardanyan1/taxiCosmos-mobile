@@ -1,0 +1,17 @@
+{
+  "status": 200,
+  "headers": {
+    "x-ratelimit-limit": "30",
+    "x-ratelimit-remaining": "28"
+  },
+  "body": {
+    "data": {
+      "verification_status": "pending",
+      "license": {
+        "number_last4": "2345",
+        "expiry": "2027-11-20"
+      },
+      "home_zone_id": null
+    }
+  }
+}

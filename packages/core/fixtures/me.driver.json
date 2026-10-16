@@ -1,0 +1,52 @@
+{
+  "status": 200,
+  "headers": {
+    "x-ratelimit-limit": "120",
+    "x-ratelimit-remaining": "118"
+  },
+  "body": {
+    "user": {
+      "id": 3,
+      "name": "Fixture Driver",
+      "phone": "+374*****059",
+      "email": null,
+      "email_verified": false,
+      "locale": "en",
+      "timezone": null,
+      "status": "active",
+      "modes": {
+        "is_rider": false,
+        "is_driver": true
+      },
+      "driver": {
+        "verification_status": "pending",
+        "availability": "offline",
+        "documents": [
+          {
+            "type": "license",
+            "status": "missing",
+            "reason": null
+          },
+          {
+            "type": "id_card",
+            "status": "missing",
+            "reason": null
+          },
+          {
+            "type": "vehicle_registration",
+            "status": "missing",
+            "reason": null
+          },
+          {
+            "type": "insurance",
+            "status": "missing",
+            "reason": null
+          }
+        ],
+        "primary_vehicle": null,
+        "debt_limit_reached": false
+      },
+      "rider": null
+    }
+  }
+}

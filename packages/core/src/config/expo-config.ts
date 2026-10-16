@@ -14,6 +14,8 @@ export interface PublicAppConfig {
   app: AppName;
   environment: AppEnvironment;
   apiUrl: string;
+  /** The realtime service address; `null` means the apps poll over REST. */
+  realtimeUrl: string | null;
   sentryDsn: string | null;
   stripePublishableKey: string | null;
 }
@@ -40,12 +42,15 @@ export function buildExpoConfig(app: AppName, env: EnvironmentVariables): ExpoCo
     app,
     environment: resolved.environment,
     apiUrl: resolved.apiUrl,
+    ...(resolved.realtimeUrl ? { realtimeUrl: resolved.realtimeUrl } : {}),
     ...(resolved.sentryDsn ? { sentryDsn: resolved.sentryDsn } : {}),
     ...(resolved.stripePublishableKey ? { stripePublishableKey: resolved.stripePublishableKey } : {}),
   };
 
   const plugins: NonNullable<ExpoConfig['plugins']> = [
     'expo-router',
+    // The session lives in the secure store; this plugin also keeps it out of Android's cloud backups (restored values cannot be decrypted).
+    'expo-secure-store',
     [
       'expo-splash-screen',
       { backgroundColor: SPLASH_BACKGROUND, image: './assets/images/splash-icon.png', imageWidth: 96 },
@@ -114,6 +119,7 @@ export function readPublicConfig(extra: unknown): PublicAppConfig {
     app: config.app,
     environment: config.environment as AppEnvironment,
     apiUrl: config.apiUrl,
+    realtimeUrl: nonEmptyString(config.realtimeUrl),
     sentryDsn: nonEmptyString(config.sentryDsn),
     stripePublishableKey: nonEmptyString(config.stripePublishableKey),
   };
