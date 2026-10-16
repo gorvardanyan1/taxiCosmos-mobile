@@ -1,0 +1,3 @@
+# Maestro workspace config: every *.yaml under flows/ runs when the folder is passed to `maestro test`.
+flows:
+  - flows/*.yaml

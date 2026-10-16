@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+**/dist
+**/.expo
+**/coverage
+**/android
+**/ios

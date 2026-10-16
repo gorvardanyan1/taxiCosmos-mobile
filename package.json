@@ -1,0 +1,31 @@
+{
+  "name": "taxikosmos-mobile",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@9.15.9+sha512.68046141893c66fad01c079231128e9afb89ef87e2691d69e4d40eee228988295fd4682181bae55b58418c3a253bde65a505ec7c5f9403ece5cc3cd37dcf2531",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": "9.15.9"
+  },
+  "scripts": {
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "check": "turbo run typecheck lint test",
+    "bundle": "turbo run bundle",
+    "check:expo": "turbo run doctor",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "rider": "pnpm --filter @taxikosmos/rider",
+    "driver": "pnpm --filter @taxikosmos/driver",
+    "e2e:check": "bash maestro/scripts/check.sh",
+    "e2e:rider": "bash maestro/scripts/run.sh rider",
+    "e2e:driver": "bash maestro/scripts/run.sh driver"
+  },
+  "devDependencies": {
+    "eslint": "9.39.5",
+    "eslint-config-expo": "~57.0.2",
+    "prettier": "3.9.10",
+    "turbo": "2.11.8"
+  }
+}

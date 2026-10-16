@@ -1,0 +1,14 @@
+# Both apps: a fresh install starts, shows its own name and the environment it was built for.
+# Run with -e APP_ID=<bundle id> -e APP_NAME=<name under the icon> (see maestro/scripts/run.sh).
+appId: ${APP_ID}
+name: App launches on a fresh install
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    text: ${APP_NAME}
+- assertVisible: 'Environment: development'
+- assertVisible: 'API: .*'
+- assertNotVisible: 'Unmatched Route'
