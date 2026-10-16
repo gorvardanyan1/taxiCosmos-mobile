@@ -1,0 +1,10 @@
+{
+  "status": 403,
+  "headers": {
+    "x-ratelimit-limit": "30",
+    "x-ratelimit-remaining": "29"
+  },
+  "body": {
+    "message": "Invalid ability provided."
+  }
+}

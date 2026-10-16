@@ -1,0 +1,11 @@
+{
+  "status": 403,
+  "headers": {
+    "x-ratelimit-limit": "10",
+    "x-ratelimit-remaining": "9"
+  },
+  "body": {
+    "message": "Your driver profile has not been approved yet.",
+    "code": "driver_not_verified"
+  }
+}

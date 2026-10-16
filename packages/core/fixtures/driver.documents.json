@@ -1,0 +1,44 @@
+{
+  "status": 200,
+  "headers": {
+    "x-ratelimit-limit": "30",
+    "x-ratelimit-remaining": "23"
+  },
+  "body": {
+    "data": [
+      {
+        "id": 1,
+        "type": "license",
+        "vehicle_id": null,
+        "status": "pending",
+        "rejection_reason": null,
+        "expires_at": "2027-11-20",
+        "uploaded_at": "2026-10-16T07:34:17+00:00",
+        "reviewed_at": null
+      }
+    ],
+    "required": [
+      {
+        "type": "license",
+        "status": "pending",
+        "reason": null
+      },
+      {
+        "type": "id_card",
+        "status": "missing",
+        "reason": null
+      },
+      {
+        "type": "vehicle_registration",
+        "status": "missing",
+        "reason": null
+      },
+      {
+        "type": "insurance",
+        "status": "missing",
+        "reason": null
+      }
+    ],
+    "all_submitted": false
+  }
+}

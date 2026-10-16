@@ -1,0 +1,22 @@
+{
+  "status": 201,
+  "headers": {
+    "x-ratelimit-limit": "20",
+    "x-ratelimit-remaining": "19"
+  },
+  "body": {
+    "data": {
+      "id": 1,
+      "code": "TKT-00001",
+      "subject": "Question about my fare",
+      "category": "fare",
+      "priority": "normal",
+      "status": "open",
+      "trip_id": null,
+      "resolution": null,
+      "resolved_at": null,
+      "last_message_at": "2026-10-16T07:34:16+00:00",
+      "created_at": "2026-10-16T07:34:16+00:00"
+    }
+  }
+}

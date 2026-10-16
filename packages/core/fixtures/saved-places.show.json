@@ -1,0 +1,17 @@
+{
+  "status": 200,
+  "headers": {
+    "x-ratelimit-limit": "120",
+    "x-ratelimit-remaining": "114"
+  },
+  "body": {
+    "data": {
+      "id": 1,
+      "label": "home",
+      "name": "Home",
+      "address": "Abovyan St 1, Yerevan",
+      "lat": 40.18,
+      "lng": 44.51
+    }
+  }
+}

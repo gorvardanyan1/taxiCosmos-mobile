@@ -1,0 +1,13 @@
+{
+  "status": 422,
+  "headers": {
+    "x-ratelimit-limit": "10",
+    "x-ratelimit-remaining": "8"
+  },
+  "body": {
+    "message": "The code is invalid or has expired.",
+    "errors": {
+      "code": ["The code is invalid or has expired."]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "status": 404,
+  "headers": {
+    "x-ratelimit-limit": "120",
+    "x-ratelimit-remaining": "113"
+  },
+  "body": {
+    "message": "No query results for model [App\\Models\\SavedPlace] 999999"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "status": 200,
+  "headers": {
+    "x-ratelimit-limit": "60",
+    "x-ratelimit-remaining": "58"
+  },
+  "body": {
+    "place": {
+      "place_id": "fake-abovyan-1",
+      "name": "Fake place",
+      "address": "Fake address abovyan-1, Yerevan",
+      "location": {
+        "lat": 40.18241,
+        "lng": 44.5021
+      }
+    }
+  }
+}

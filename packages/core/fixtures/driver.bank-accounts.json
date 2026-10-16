@@ -1,0 +1,21 @@
+{
+  "status": 200,
+  "headers": {
+    "x-ratelimit-limit": "30",
+    "x-ratelimit-remaining": "24"
+  },
+  "body": {
+    "data": [
+      {
+        "id": 1,
+        "account_holder": "Fixture Driver",
+        "bank_name": "Fixture Bank",
+        "account_last4": "0123",
+        "swift": "FIXTAM22",
+        "is_default": true,
+        "verified": false,
+        "created_at": "2026-10-16T07:34:17+00:00"
+      }
+    ]
+  }
+}

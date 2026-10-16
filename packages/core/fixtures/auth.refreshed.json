@@ -1,0 +1,39 @@
+{
+  "status": 200,
+  "headers": {
+    "x-ratelimit-limit": "30",
+    "x-ratelimit-remaining": "29"
+  },
+  "body": {
+    "access_token": "1|fixture-access-token",
+    "access_token_expires_at": "2026-10-16T08:34:16+00:00",
+    "refresh_token": "fixture-refresh-token",
+    "user": {
+      "id": 1,
+      "name": "Fixture Rider",
+      "phone": "+374*****058",
+      "email": null,
+      "email_verified": false,
+      "locale": "en",
+      "timezone": null,
+      "status": "active",
+      "modes": {
+        "is_rider": true,
+        "is_driver": false
+      },
+      "driver": null,
+      "rider": {
+        "rating": {
+          "average": null,
+          "count": 0
+        },
+        "outstanding_balance": {
+          "amount": 0,
+          "currency": "AMD"
+        },
+        "default_payment_method": null
+      }
+    },
+    "needs_phone": false
+  }
+}

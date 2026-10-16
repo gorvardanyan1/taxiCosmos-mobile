@@ -1,0 +1,47 @@
+{
+  "status": 201,
+  "headers": {
+    "x-ratelimit-limit": "30",
+    "x-ratelimit-remaining": "29"
+  },
+  "body": {
+    "quote_id": "01a143a2-1013-7200-9a95-e8ac6efcb892",
+    "expires_at": "2026-10-16T07:44:16+00:00",
+    "zone": {
+      "id": 1,
+      "name": "Fixture City"
+    },
+    "currency": "AMD",
+    "distance_meters": 3638,
+    "duration_seconds": 437,
+    "estimates": [
+      {
+        "vehicle_class": "economy",
+        "currency": "AMD",
+        "amount": 1192,
+        "amount_min": 1073,
+        "amount_max": 1311,
+        "surge_multiplier": "1.00",
+        "eta_to_pickup_seconds": null
+      },
+      {
+        "vehicle_class": "comfort",
+        "currency": "AMD",
+        "amount": 1192,
+        "amount_min": 1073,
+        "amount_max": 1311,
+        "surge_multiplier": "1.00",
+        "eta_to_pickup_seconds": null
+      },
+      {
+        "vehicle_class": "business",
+        "currency": "AMD",
+        "amount": 1192,
+        "amount_min": 1073,
+        "amount_max": 1311,
+        "surge_multiplier": "1.00",
+        "eta_to_pickup_seconds": null
+      }
+    ]
+  }
+}
