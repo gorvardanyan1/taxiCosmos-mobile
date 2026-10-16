@@ -32,6 +32,19 @@ describe('buildExpoConfig', () => {
     });
   });
 
+  it('declares the export-compliance answer so iOS builds can go to TestFlight and the store without a prompt', () => {
+    // The apps only use the system's HTTPS; without this flag every upload stops at the encryption question.
+    for (const app of ['rider', 'driver'] as const) {
+      expect(buildExpoConfig(app, PRODUCTION).ios?.config?.usesNonExemptEncryption).toBe(false);
+    }
+  });
+
+  it('follows the phone light/dark setting, which the design system relies on', () => {
+    for (const app of ['rider', 'driver'] as const) {
+      expect(buildExpoConfig(app, PRODUCTION).userInterfaceStyle).toBe('automatic');
+    }
+  });
+
   it('builds the driver with its own identity from the same rules', () => {
     const config = buildExpoConfig('driver', { APP_ENV: 'development' });
 
