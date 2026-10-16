@@ -8,7 +8,7 @@ import {
 
 import { isDefinitive } from './errors';
 import { SessionManager, type SessionEndReason } from './session';
-import { createMemoryOperationStore, type OperationStore, type TokenStore } from './storage';
+import { createMemoryOperationStore, type OperationRecord, type OperationStore, type TokenStore } from './storage';
 import { buildUrl, send, type Exchange, type HttpMethod, type QueryValue } from './transport';
 
 export interface ApiClientOptions {
@@ -69,6 +69,8 @@ export interface ApiResponse<T> extends Exchange<T> {
 
 const MUTATING: ReadonlySet<HttpMethod> = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** Actions remembered in memory for a retry in the same run, for the case the store cannot be used. */
+const MAX_REMEMBERED_ACTIONS = 50;
 
 export class ApiClient {
   readonly session: SessionManager;
@@ -80,6 +82,11 @@ export class ApiClient {
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly getLocale: (() => Locale) | undefined;
   private readonly inFlight = new Map<string, Promise<ApiResponse<unknown>>>();
+  /**
+   * The action records of this run, mirrored in memory. Secure storage is best effort (a locked or damaged keychain must not change what
+   * a request does), so a retry in the same run still finds its key here when the store cannot be read or written.
+   */
+  private readonly records = new Map<string, OperationRecord>();
   /** Bumped whenever the stored actions are forgotten; an action that finishes after that must not write itself back. */
   private epoch = 0;
 
@@ -139,7 +146,55 @@ export class ApiClient {
   /** The stored actions of whoever was signed in are deleted; an action still in flight must not write itself back afterwards. */
   private async forgetActions(): Promise<void> {
     this.epoch++;
+    this.records.clear();
     await this.operations.clear();
+  }
+
+  // The three helpers below are the only way the client touches the operation store, and none of them ever throws: a storage failure
+  // costs the restart-safety of one action, never the action itself (the request is sent, and its real result is returned).
+
+  private async readRecord(operation: string): Promise<OperationRecord | null> {
+    try {
+      const stored = await this.operations.get(operation);
+
+      if (stored !== null) {
+        return stored;
+      }
+    } catch {
+      // Storage unavailable: fall back to this run's copy.
+    }
+
+    return this.records.get(operation) ?? null;
+  }
+
+  private async writeRecord(operation: string, record: OperationRecord): Promise<void> {
+    // Bounded: the oldest copies go first, so a long session cannot grow this without end.
+    this.records.delete(operation);
+    this.records.set(operation, record);
+
+    for (const name of this.records.keys()) {
+      if (this.records.size <= MAX_REMEMBERED_ACTIONS) {
+        break;
+      }
+
+      this.records.delete(name);
+    }
+
+    try {
+      await this.operations.set(operation, record);
+    } catch {
+      // Kept in memory for this run; a restart before the action finishes would start it again with a new key.
+    }
+  }
+
+  private async removeRecord(operation: string): Promise<void> {
+    this.records.delete(operation);
+
+    try {
+      await this.operations.delete(operation);
+    } catch {
+      // The record ages out by itself (retention) or is cleared at sign-out.
+    }
   }
 
   // ---- idempotent user actions ----
@@ -172,7 +227,7 @@ export class ApiClient {
     operation: string,
   ): Promise<ApiResponse<T>> {
     const epoch = this.epoch;
-    const stored = await this.operations.get(operation);
+    const stored = await this.readRecord(operation);
     const fresh = stored !== null && this.now() - stored.createdAt < this.options.operationTtlMs;
 
     if (stored !== null && fresh && stored.state === 'succeeded' && stored.response) {
@@ -188,7 +243,7 @@ export class ApiClient {
     const key = stored !== null && fresh ? stored.key : (options.idempotencyKey ?? this.newKey());
 
     if (!(stored !== null && fresh)) {
-      await this.operations.set(operation, { key, state: 'pending', createdAt: this.now() });
+      await this.writeRecord(operation, { key, state: 'pending', createdAt: this.now() });
     }
 
     try {
@@ -196,7 +251,7 @@ export class ApiClient {
 
       // Signed out while it was in flight: the answer may hold the previous person's data, so it is not kept.
       if (epoch === this.epoch) {
-        await this.operations.set(operation, {
+        await this.writeRecord(operation, {
           key,
           state: 'succeeded',
           createdAt: this.now(),
@@ -211,7 +266,7 @@ export class ApiClient {
       // A final answer (the input was wrong, the thing is gone) ends the action: its next attempt is a new one with a new key. No answer,
       // a server failure or a throttle may have applied the action, so the key stays for the retry.
       if (apiError !== null && isDefinitive(apiError)) {
-        await this.operations.delete(operation);
+        await this.removeRecord(operation);
       }
 
       throw error;

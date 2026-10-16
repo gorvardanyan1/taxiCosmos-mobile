@@ -454,6 +454,126 @@ describe('a signed-out person leaves no actions behind on the device', () => {
   });
 });
 
+describe('a failing store never changes what the request does', () => {
+  type Failure = 'read' | 'write-pending' | 'write-succeeded' | 'delete' | 'all';
+
+  /** An operation store that behaves like a locked or damaged keychain for the chosen calls. */
+  function brokenStore(failures: Failure[]): OperationStore {
+    const broken = (kind: Failure) => failures.includes(kind) || failures.includes('all');
+    const refuse = async (): Promise<never> => Promise.reject(new Error('keychain unavailable'));
+
+    return {
+      get: async () => (broken('read') ? refuse() : null),
+      set: async (_operation, record) =>
+        broken(record.state === 'pending' ? 'write-pending' : 'write-succeeded') ? refuse() : undefined,
+      delete: async () => (broken('delete') ? refuse() : undefined),
+      clear: async () => (broken('all') ? refuse() : undefined),
+    };
+  }
+
+  it.each(['read', 'write-pending', 'write-succeeded', 'all'] as const)(
+    'sends the request once and returns the real answer when the store fails (%s)',
+    async (failure) => {
+      const { client, server } = makeClient([ok({ data: { id: 1 } }, 201)], { operations: brokenStore([failure]) });
+      const response = await client.post<{ data: { id: number } }>('/driver/vehicles', { operation: 'vehicle:1' });
+
+      expect(response).toMatchObject({ status: 201, data: { data: { id: 1 } }, replayed: false });
+      expect(server.requests).toHaveLength(1);
+    },
+  );
+
+  it('does not report an action the server accepted as failed just because its record could not be saved (no duplicate vehicle on retry)', async () => {
+    const { client, server } = makeClient([ok({ data: { id: 1 } }, 201), ok({ data: { id: 2 } }, 201)], {
+      operations: brokenStore(['write-succeeded']),
+    });
+    const first = await client.post('/driver/vehicles', { operation: 'vehicle:1' });
+    const again = await client.post('/driver/vehicles', { operation: 'vehicle:1' });
+
+    // The answer of the first call is remembered for this run even though the store refused it: the repeat is not sent.
+    expect(first.replayed).toBe(false);
+    expect(again.replayed).toBe(true);
+    expect(server.requests).toHaveLength(1);
+  });
+
+  it('still reuses the key for a retry in the same run when nothing can be stored', async () => {
+    const { client, server } = makeClient(['network-error', ok({ data: { id: 1 } }, 201)], {
+      operations: brokenStore(['all']),
+    });
+    const failed = await caught(client.post('/support-tickets', { operation: 'ticket:1' }));
+    await client.post('/support-tickets', { operation: 'ticket:1' });
+
+    expect(getApiError(failed)).toMatchObject({ kind: 'network' });
+    expect(server.requests[1]?.headers['idempotency-key']).toBe(server.requests[0]?.headers['idempotency-key']);
+  });
+
+  it('still lets a final refusal end the action when the store cannot delete it', async () => {
+    const { client, server } = makeClient([replyWith(fixtures.errorValidation), ok({}, 201)], {
+      operations: brokenStore(['delete']),
+    });
+    const refused = await caught(client.post('/x', { operation: 'op' }));
+    await client.post('/x', { operation: 'op' });
+
+    expect(getApiError(refused)).toMatchObject({ kind: 'validation' });
+    expect(server.requests[1]?.headers['idempotency-key']).not.toBe(server.requests[0]?.headers['idempotency-key']);
+  });
+
+  it("keeps reporting real failures as API errors, never as the store's own error", async () => {
+    const { client } = makeClient([replyWith(fixtures.errorRateLimited)], { operations: brokenStore(['all']) });
+    const error = await caught(client.post('/x', { operation: 'op' }));
+
+    expect(error).toBeInstanceOf(ApiRequestError);
+    expect(getApiError(error)).toMatchObject({ kind: 'rate_limited' });
+  });
+
+  it('forgets the in-memory copies at sign-out too, even when the store fails', async () => {
+    const { client, server } = makeClient([ok({ data: { id: 1 } }, 201), empty(), ok({ data: { id: 2 } }, 201)], {
+      operations: brokenStore(['all']),
+    });
+    await client.post('/driver/vehicles', { operation: 'vehicle:1' });
+    await client.session.clear();
+    await client.session.start(sessionPayload());
+    const next = await client.post('/driver/vehicles', { operation: 'vehicle:1' });
+
+    expect(next.replayed).toBe(false);
+    expect(server.requests.filter((r) => r.path === '/driver/vehicles')).toHaveLength(2);
+  });
+
+  it('does not reuse an in-memory copy older than the repeat window', async () => {
+    let now = 1_000_000;
+    const { client, server } = makeClient(['network-error', ok({}, 201)], {
+      operations: brokenStore(['all']),
+      now: () => now,
+      operationTtlMs: 60_000,
+    });
+    await caught(client.post('/x', { operation: 'old' }));
+    now += 61_000;
+    await client.post('/x', { operation: 'old' });
+
+    expect(server.requests[1]?.headers['idempotency-key']).not.toBe(server.requests[0]?.headers['idempotency-key']);
+  });
+
+  it('keeps at most fifty actions in memory, the newest ones, so a long session cannot grow it without end', async () => {
+    const script = [
+      'network-error' as const,
+      ...Array.from({ length: 50 }, () => ok({}, 201)),
+      ok({}, 201),
+      ok({}, 201),
+    ];
+    const { client, server } = makeClient(script, { operations: brokenStore(['all']) });
+    await caught(client.post('/x', { operation: 'first' }));
+    for (let n = 0; n < 50; n++) {
+      await client.post('/x', { operation: `other-${n}` });
+    }
+
+    // The first action was pushed out: it starts again with a new key. The most recent one is still remembered.
+    await client.post('/x', { operation: 'first' });
+    const recent = await client.post('/x', { operation: 'other-49' });
+
+    expect(server.requests[51]?.headers['idempotency-key']).not.toBe(server.requests[0]?.headers['idempotency-key']);
+    expect(recent.replayed).toBe(true);
+  });
+});
+
 describe('an action that already succeeded does not go out again', () => {
   it('returns the stored answer for a repeat of the same action without a second request', async () => {
     const { client, server } = makeClient([ok({ data: { id: 1 } }, 201)]);
@@ -502,18 +622,25 @@ describe('an action that already succeeded does not go out again', () => {
     expect(again.data.n).toBe(2);
   });
 
-  it('copes with an operation store that has lost its data', async () => {
+  it('copes with an operation store that has lost its data: this run still remembers, a restart starts the action again', async () => {
     const forgetful: OperationStore = {
       get: async () => null,
       set: async () => undefined,
       delete: async () => undefined,
       clear: async () => undefined,
     };
-    const { client, server } = makeClient([ok({}, 201), ok({}, 201)], { operations: forgetful });
-    await client.post('/x', { operation: 'op' });
-    await client.post('/x', { operation: 'op' });
+    const tokens = createMemoryTokenStore(pair());
+    const run = makeClient([ok({}, 201)], { operations: forgetful, tokens });
+    await run.client.post('/x', { operation: 'op' });
+    const repeat = await run.client.post('/x', { operation: 'op' });
+    expect(repeat.replayed).toBe(true);
+    expect(run.server.requests).toHaveLength(1);
 
-    expect(server.requests).toHaveLength(2);
+    // After a restart there is no memory of it and the store forgot too: the action is sent again, with a new key.
+    const restarted = makeClient([ok({}, 201)], { operations: forgetful, tokens });
+    await restarted.client.post('/x', { operation: 'op' });
+    expect(restarted.server.requests).toHaveLength(1);
+    expect(restarted.server.requests[0]?.headers['idempotency-key']).toBeDefined();
   });
 });
 

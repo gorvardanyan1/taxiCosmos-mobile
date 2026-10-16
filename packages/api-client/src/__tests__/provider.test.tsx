@@ -14,7 +14,7 @@ import {
   createRealtimeClient,
 } from '..';
 import { replyWith } from './helpers';
-import { captureAppState, fakeRealtime, renderWithApi, testQueryClient, waitFor } from './react-helpers';
+import { captureAppState, fakeRealtime, mountAgain, renderWithApi, testQueryClient, waitFor } from './react-helpers';
 
 afterEach(() => {
   jest.restoreAllMocks();
@@ -147,12 +147,23 @@ describe('the realtime connection follows the session', () => {
 
   it('leaves a query nobody is looking at alone on reconnect', async () => {
     const { realtime, reconnect } = fakeRealtime();
-    const { result, server, unmount } = await renderWithApi(() => useMe(), [replyWith(fixtures.meRider)], { realtime });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    unmount();
-    reconnect();
+    // The provider stays mounted (it is the app); only the screen that used the query is closed.
+    const app = await renderWithApi(
+      () => useSessionStatus(),
+      [replyWith(fixtures.meRider), replyWith(fixtures.meRiderUpdated)],
+      { realtime },
+    );
+    const screen = mountAgain(() => useMe(), app);
+    await waitFor(() => expect(screen.result.current.isSuccess).toBe(true));
+    screen.unmount();
 
-    expect(server.requests).toHaveLength(1);
+    await act(async () => {
+      reconnect();
+      // A refetch would be issued within a tick or two: give it the time before concluding there was none.
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+
+    expect(app.server.requests).toHaveLength(1);
   });
 });
 

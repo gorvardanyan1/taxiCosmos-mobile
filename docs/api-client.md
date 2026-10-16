@@ -67,8 +67,12 @@ with no second request; a double tap shares one request; a final refusal (e.g. 4
   reuses the key, and editing the input starts a new action. A screen that is closed and reopened starts a new action; where a retry must
   survive that, pass your own stable name to the endpoint function (`api.support.create(body, 'ticket:draft-1')`).
 - **What is kept, and for how long.** The record of an action (its key and the server's answer, which can hold names, addresses or bank
-  details) lives in the secure store, never in plain storage. It is deleted when the person signs out, when another person signs in, when the
-  app starts and finds nobody signed in, and after 24 hours at the latest. An action that finishes after sign-out does not write itself back.
+  details) lives in the secure store, never in plain storage. It is deleted when the person signs out, when another person signs in, and
+  when the app starts and finds nobody signed in. Records older than 24 hours are also deleted the next time any action is stored. An action
+  that finishes after sign-out does not write itself back.
+- **Storage is best effort.** If the secure store cannot be read or written (a locked or damaged keychain), the request is still sent and its real
+  result returned: only the restart-safety of that one action is lost. The last 50 actions are also remembered in memory for the current run,
+  so a retry in the same run still reuses its key.
 - **The backend honours the header only on support tickets today**; the other writes rely on the app not repeating them. Endpoints marked
   `retries` resend by themselves only where the server dedupes.
 

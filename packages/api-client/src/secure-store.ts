@@ -2,7 +2,7 @@ import { newIdempotencyKey, type AppClient, type Locale } from '@taxikosmos/core
 import * as SecureStore from 'expo-secure-store';
 
 import { createApiClient, type ApiClient } from './client';
-import { createRealtimeClient, type RealtimeClient } from './realtime';
+import { createRealtimeClient, type RealtimeClient, type TransportFactory } from './realtime';
 import {
   createStorageOperationStore,
   getOrCreateDeviceId,
@@ -51,6 +51,8 @@ export interface AppApiOptions {
   locale?: Locale;
   /** Replaces the network, for tests. */
   fetch?: typeof fetch;
+  /** Replaces the Socket.io connection, for tests. */
+  createTransport?: TransportFactory;
 }
 
 /**
@@ -72,6 +74,7 @@ export function createAppApi(options: AppApiOptions) {
     url: options.realtimeUrl,
     app: options.app,
     getToken: () => client.session.accessToken(),
+    ...(options.createTransport ? { createTransport: options.createTransport } : {}),
   });
 
   return {

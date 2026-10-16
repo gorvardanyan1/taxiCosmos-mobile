@@ -133,6 +133,58 @@ describe('createAppApi', () => {
     expect(make([], { realtimeUrl: 'wss://realtime.example.test' }).api.realtime.mode).toBe('socket');
   });
 
+  describe('the realtime connection', () => {
+    /** The token comes through the secure store, the session and `getToken`: wait for those, not for a fixed number of ticks. */
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 25));
+
+    /** A socket that never connects: enough to see how it was asked for. */
+    const idleSocket = () => ({
+      connected: false,
+      connect: () => undefined,
+      disconnect: () => undefined,
+      on: () => undefined,
+      off: () => undefined,
+    });
+
+    it("connects with the signed-in person's access token and the app, through the same session as the API calls", async () => {
+      await createSecureTokenStore('rider').write(pair({ accessToken: 'tok-for-realtime' }));
+      const asked: unknown[] = [];
+      const api = createAppApi({
+        app: 'rider',
+        baseUrl: 'https://api.example.test',
+        realtimeUrl: 'wss://realtime.example.test',
+        createTransport: (config) => {
+          asked.push(config);
+
+          return idleSocket();
+        },
+      });
+      api.realtime.start();
+      await flush();
+
+      expect(asked).toEqual([{ url: 'wss://realtime.example.test', token: 'tok-for-realtime', app: 'rider' }]);
+    });
+
+    it('does not connect for a signed-out app: there is no token to connect with', async () => {
+      const asked: unknown[] = [];
+      const api = createAppApi({
+        app: 'driver',
+        baseUrl: 'https://api.example.test',
+        realtimeUrl: 'wss://realtime.example.test',
+        createTransport: (config) => {
+          asked.push(config);
+
+          return idleSocket();
+        },
+      });
+      api.realtime.start();
+      await flush();
+
+      expect(asked).toEqual([]);
+      expect(api.realtime.status).toBe('stopped');
+    });
+  });
+
   it('gives the same device id every time, made once', async () => {
     const { api } = make([]);
     const first = await api.getDeviceId();

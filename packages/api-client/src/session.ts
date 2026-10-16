@@ -67,6 +67,11 @@ export class SessionManager {
 
           if (pair === null) {
             await this.forget();
+
+            // A sign-in can finish while the leftovers are being removed; it wins.
+            if (this.status !== 'unknown') {
+              return;
+            }
           }
 
           this.setStatus(pair === null ? 'signed_out' : 'signed_in');

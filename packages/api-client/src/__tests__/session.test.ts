@@ -85,6 +85,38 @@ describe('SessionManager: loading', () => {
   });
 });
 
+describe('SessionManager: a sign-in racing the launch', () => {
+  it("wins over the launch finding nobody signed in, even when the launch's cleanup finishes last", async () => {
+    const cleanups: (() => void)[] = [];
+    const manager = new SessionManager({
+      store: createMemoryTokenStore(null),
+      refresh: async () => fresh(2),
+      onForget: () => new Promise<void>((resolve) => cleanups.push(resolve)),
+      now: () => NOW,
+    });
+    const wait = async (condition: () => boolean) => {
+      for (let i = 0; i < 50 && !condition(); i++) {
+        await Promise.resolve();
+      }
+    };
+
+    const launch = manager.load();
+    await wait(() => cleanups.length === 1);
+    const signIn = manager.start(fresh(3));
+    await wait(() => cleanups.length === 2);
+
+    cleanups[1]?.(); // the sign-in's cleanup finishes first: signed in
+    await signIn;
+    expect(manager.getSnapshot().status).toBe('signed_in');
+
+    cleanups[0]?.(); // the launch's cleanup finishes last and must not sign the person out again
+    await launch;
+
+    expect(manager.getSnapshot().status).toBe('signed_in');
+    expect(await manager.accessToken()).toBe('access-3');
+  });
+});
+
 describe('SessionManager: starting and ending', () => {
   it('saves the new tokens before the app sees itself as signed in', async () => {
     const { manager, store } = make({ store: loggingTokenStore(null) });
