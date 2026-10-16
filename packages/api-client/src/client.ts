@@ -83,10 +83,12 @@ export class ApiClient {
   private readonly getLocale: (() => Locale) | undefined;
   private readonly inFlight = new Map<string, Promise<ApiResponse<unknown>>>();
   /**
-   * The action records of this run, mirrored in memory. Secure storage is best effort (a locked or damaged keychain must not change what
-   * a request does), so a retry in the same run still finds its key here when the store cannot be read or written.
+   * What this run knows about each named action: its record, or `null` once the action ended (a final refusal). While it has an entry for
+   * an action, this is the truth and the store is not asked: the store may have failed to save a newer record or to delete an ended one,
+   * and trusting it then would resend an accepted action or reuse a key for different input. Only an action this run knows nothing about
+   * (the app was restarted) is looked up in the store.
    */
-  private readonly records = new Map<string, OperationRecord>();
+  private readonly records = new Map<string, OperationRecord | null>();
   /** Bumped whenever the stored actions are forgotten; an action that finishes after that must not write itself back. */
   private epoch = 0;
 
@@ -154,31 +156,20 @@ export class ApiClient {
   // costs the restart-safety of one action, never the action itself (the request is sent, and its real result is returned).
 
   private async readRecord(operation: string): Promise<OperationRecord | null> {
-    try {
-      const stored = await this.operations.get(operation);
-
-      if (stored !== null) {
-        return stored;
-      }
-    } catch {
-      // Storage unavailable: fall back to this run's copy.
+    if (this.records.has(operation)) {
+      return this.records.get(operation) ?? null;
     }
 
-    return this.records.get(operation) ?? null;
+    try {
+      return await this.operations.get(operation);
+    } catch {
+      // Storage unavailable: no record, the action starts fresh.
+      return null;
+    }
   }
 
   private async writeRecord(operation: string, record: OperationRecord): Promise<void> {
-    // Bounded: the oldest copies go first, so a long session cannot grow this without end.
-    this.records.delete(operation);
-    this.records.set(operation, record);
-
-    for (const name of this.records.keys()) {
-      if (this.records.size <= MAX_REMEMBERED_ACTIONS) {
-        break;
-      }
-
-      this.records.delete(name);
-    }
+    this.remember(operation, record);
 
     try {
       await this.operations.set(operation, record);
@@ -188,12 +179,26 @@ export class ApiClient {
   }
 
   private async removeRecord(operation: string): Promise<void> {
-    this.records.delete(operation);
+    this.remember(operation, null);
 
     try {
       await this.operations.delete(operation);
     } catch {
-      // The record ages out by itself (retention) or is cleared at sign-out.
+      // This run knows the action ended; the stale record ages out by itself (retention) or is cleared at sign-out.
+    }
+  }
+
+  /** Bounded: the oldest entries go first, so a long session cannot grow this without end. */
+  private remember(operation: string, value: OperationRecord | null): void {
+    this.records.delete(operation);
+    this.records.set(operation, value);
+
+    for (const name of this.records.keys()) {
+      if (this.records.size <= MAX_REMEMBERED_ACTIONS) {
+        break;
+      }
+
+      this.records.delete(name);
     }
   }
 

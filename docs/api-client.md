@@ -71,8 +71,9 @@ with no second request; a double tap shares one request; a final refusal (e.g. 4
   when the app starts and finds nobody signed in. Records older than 24 hours are also deleted the next time any action is stored. An action
   that finishes after sign-out does not write itself back.
 - **Storage is best effort.** If the secure store cannot be read or written (a locked or damaged keychain), the request is still sent and its real
-  result returned: only the restart-safety of that one action is lost. The last 50 actions are also remembered in memory for the current run,
-  so a retry in the same run still reuses its key.
+  result returned: only the restart-safety of that one action is lost. During a run the client's own memory of the last 50 actions is the
+  truth: it is asked first, so a record the store failed to save or to delete cannot make an accepted action go out twice, or give a corrected
+  input the key of a refused one. The store is asked only about actions this run knows nothing about (after a restart).
 - **The backend honours the header only on support tickets today**; the other writes rely on the app not repeating them. Endpoints marked
   `retries` resend by themselves only where the server dedupes.
 

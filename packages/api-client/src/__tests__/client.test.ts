@@ -574,6 +574,68 @@ describe('a failing store never changes what the request does', () => {
   });
 });
 
+describe("a store that works but fails one call never makes an old record win over this run's knowledge", () => {
+  /** A store that keeps data like the real one, but refuses one kind of call. */
+  function partlyBroken(refuse: 'set-succeeded' | 'delete'): OperationStore {
+    const inner = createMemoryOperationStore();
+    const refused = (): Promise<never> => Promise.reject(new Error('keychain unavailable'));
+
+    return {
+      get: (operation) => inner.get(operation),
+      set: (operation, record) =>
+        refuse === 'set-succeeded' && record.state === 'succeeded' ? refused() : inner.set(operation, record),
+      delete: (operation) => (refuse === 'delete' ? refused() : inner.delete(operation)),
+      clear: () => inner.clear(),
+    };
+  }
+
+  it('an accepted action whose record could not be saved is not sent again when the user taps again (no duplicate on a backend that does not dedupe)', async () => {
+    const { client, server } = makeClient([ok({ data: { id: 1 } }, 201), ok({ data: { id: 2 } }, 201)], {
+      operations: partlyBroken('set-succeeded'),
+    });
+    const first = await client.post('/driver/vehicles', { operation: 'vehicle:1' });
+    const again = await client.post('/driver/vehicles', { operation: 'vehicle:1' });
+
+    expect(server.requests).toHaveLength(1);
+    expect(again).toMatchObject({ replayed: true, data: first.data });
+  });
+
+  it('a refused input whose record could not be deleted gets a new key for the corrected input', async () => {
+    const { client, server } = makeClient([replyWith(fixtures.errorValidation), ok({}, 201)], {
+      operations: partlyBroken('delete'),
+    });
+    const refused = await caught(client.post('/x', { operation: 'op', body: { a: 1 } }));
+    await client.post('/x', { operation: 'op', body: { a: 2 } });
+
+    expect(getApiError(refused)).toMatchObject({ kind: 'validation' });
+    expect(server.requests[1]?.headers['idempotency-key']).not.toBe(server.requests[0]?.headers['idempotency-key']);
+  });
+
+  it('after the app restarts the store is asked, so an unfinished action keeps its key', async () => {
+    const operations = createMemoryOperationStore();
+    const tokens = createMemoryTokenStore(pair());
+    const before = makeClient(['network-error'], { operations, tokens });
+    await caught(before.client.post('/x', { operation: 'op' }));
+    const after = makeClient([ok({}, 201)], { operations, tokens });
+    await after.client.post('/x', { operation: 'op' });
+
+    expect(after.server.requests[0]?.headers['idempotency-key']).toBe(
+      before.server.requests[0]?.headers['idempotency-key'],
+    );
+  });
+
+  it('an ended action stays ended for the rest of the run even though its record is still in the store', async () => {
+    const operations = partlyBroken('delete');
+    const tokens = createMemoryTokenStore(pair());
+    const run = makeClient([replyWith(fixtures.errorValidation), 'network-error'], { operations, tokens });
+    await caught(run.client.post('/x', { operation: 'op' }));
+    await caught(run.client.post('/x', { operation: 'op' }));
+    expect(run.server.requests[1]?.headers['idempotency-key']).not.toBe(
+      run.server.requests[0]?.headers['idempotency-key'],
+    );
+  });
+});
+
 describe('an action that already succeeded does not go out again', () => {
   it('returns the stored answer for a repeat of the same action without a second request', async () => {
     const { client, server } = makeClient([ok({ data: { id: 1 } }, 201)]);
