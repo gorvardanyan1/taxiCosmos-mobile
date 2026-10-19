@@ -1,4 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src"]
+  "compilerOptions": {
+    "allowJs": true,
+    "types": ["jest", "node", "nativewind/types"],
+    "lib": ["es2022"]
+  },
+  "include": ["src", "nativewind-env.d.ts", "tailwind-preset.js"]
 }
