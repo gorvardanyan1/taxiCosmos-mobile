@@ -1,4 +1,4 @@
-import { AsYouType, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js/min';
+import { AsYouType, getCountryCallingCode, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js/min';
 
 /**
  * Phone numbers leave the app in E.164 (`+37491234567`) and nowhere else: the backend never guesses at a national format. The
@@ -8,6 +8,11 @@ import { AsYouType, parsePhoneNumberFromString, type CountryCode } from 'libphon
 export type { CountryCode };
 
 export const DEFAULT_PHONE_COUNTRY: CountryCode = 'AM';
+
+/** The dial code of a country with its plus sign: `AM` → `+374`. */
+export function dialCodeFor(country: CountryCode): string {
+  return `+${getCountryCallingCode(country)}`;
+}
 
 /** E.164: a plus sign, a non-zero first digit, 8 to 15 digits in total. */
 const E164 = /^\+[1-9]\d{7,14}$/;

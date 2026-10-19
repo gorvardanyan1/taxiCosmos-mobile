@@ -17,6 +17,16 @@ describe('decimalsFor', () => {
 });
 
 describe('formatMoney', () => {
+  it('writes the dram sign in every language, never the letters AMD', () => {
+    for (const locale of ['en', 'ru', 'hy']) {
+      const text = formatMoney({ amount: 1500, currency: 'AMD' }, locale);
+
+      expect(text).toContain('֏');
+      expect(text).not.toContain('AMD');
+      expect(digits(text)).toBe('1500');
+    }
+  });
+
   it('shows AMD amounts as whole drams, not hundredths', () => {
     expect(digits(formatMoney({ amount: 1192, currency: 'AMD' }, 'en'))).toBe('1192');
     expect(formatMoney({ amount: 1192, currency: 'AMD' }, 'en')).toContain('1,192');

@@ -1,0 +1,31 @@
+# Both apps (development builds): the UI-kit preview opens from the home screen, follows the theme and language pickers, and the
+# language is still there after the app is closed and opened again. Needs a build that is not "production".
+# Run with -e APP_ID=<bundle id> (see maestro/scripts/run.sh).
+appId: ${APP_ID}
+name: Design system preview switches theme and language and remembers them
+tags:
+  - smoke
+  - design
+---
+- launchApp:
+    clearState: true
+- tapOn: 'Design system'
+- assertVisible: 'Buttons'
+- tapOn: 'Dark'
+- assertVisible: 'Buttons'
+- scrollUntilVisible:
+    element: 'Phone number'
+- assertVisible: 'Verification code'
+- scrollUntilVisible:
+    element: 'Appearance and language'
+    direction: UP
+- tapOn: 'Русский'
+- assertVisible: 'Кнопки'
+- assertNotVisible: 'Buttons'
+# A new launch keeps the language the person picked (the preview button on the home screen is already Russian).
+- launchApp
+- assertVisible: 'Дизайн-система'
+- tapOn: 'Дизайн-система'
+- assertVisible: 'Кнопки'
+- tapOn: 'English'
+- assertVisible: 'Buttons'

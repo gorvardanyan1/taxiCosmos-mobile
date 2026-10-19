@@ -1,24 +1,25 @@
+import { Button, Text, useUiTranslation } from '@taxikosmos/ui';
 import Constants from 'expo-constants';
-import { StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { View } from 'react-native';
 
 import { appConfig } from '../config';
 
 /** Placeholder home until the navigation shell (M1-T4); proves the build boots with the right identity and environment. */
 export default function Home() {
+  const router = useRouter();
+  const { t } = useUiTranslation();
+
   return (
-    <View style={styles.screen}>
-      <Text accessibilityRole="header" style={styles.title}>
+    <View className="flex-1 items-center justify-center gap-2 bg-paper p-6 dark:bg-slate-950">
+      <Text accessibilityRole="header" className="text-2xl font-manrope-extrabold text-slate-950 dark:text-white">
         {Constants.expoConfig?.name}
       </Text>
-      <Text style={styles.detail}>Environment: {appConfig.environment}</Text>
-      <Text style={styles.detail}>API: {appConfig.apiUrl}</Text>
+      <Text className="text-sm text-slate-500 dark:text-slate-400">Environment: {appConfig.environment}</Text>
+      <Text className="text-sm text-slate-500 dark:text-slate-400">API: {appConfig.apiUrl}</Text>
+      {appConfig.environment !== 'production' ? (
+        <Button className="mt-4" size="sm" label={t('preview.title')} onPress={() => router.push('/design-preview')} />
+      ) : null}
     </View>
   );
 }
-
-// Colours from RiderTaxiAppTemplate/src/index.css until the design system (M1-T3) replaces them.
-const styles = StyleSheet.create({
-  screen: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#F5F6F2', padding: 24 },
-  title: { fontSize: 24, fontWeight: '800', color: '#020617' },
-  detail: { fontSize: 14, color: '#64748B' },
-});

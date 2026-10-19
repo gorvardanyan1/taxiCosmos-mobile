@@ -1,4 +1,11 @@
-import { DEFAULT_PHONE_COUNTRY, formatPhoneForDisplay, formatPhoneInput, isE164, normalizePhone } from '../index.ts';
+import {
+  DEFAULT_PHONE_COUNTRY,
+  dialCodeFor,
+  formatPhoneForDisplay,
+  formatPhoneInput,
+  isE164,
+  normalizePhone,
+} from '../index.ts';
 
 describe('normalizePhone', () => {
   it('turns every way of writing an Armenian mobile number into the same E.164 number', () => {
@@ -77,5 +84,13 @@ describe('formatPhoneInput', () => {
   it('is not valid for letters or an empty field', () => {
     expect(formatPhoneInput('')).toEqual({ formatted: '', e164: null, valid: false });
     expect(formatPhoneInput('abc').valid).toBe(false);
+  });
+});
+
+describe('dialCodeFor', () => {
+  it('gives the dial code with its plus sign', () => {
+    expect(dialCodeFor('AM')).toBe('+374');
+    expect(dialCodeFor('RU')).toBe('+7');
+    expect(dialCodeFor('US')).toBe('+1');
   });
 });

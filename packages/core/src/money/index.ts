@@ -36,6 +36,8 @@ export function formatMoney(money: Money, locale: string): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: money.currency,
+    // The dram sign (֏) in every language: the default would print the letters "AMD" in English and Russian.
+    currencyDisplay: 'narrowSymbol',
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(money.amount / 10 ** decimals);
