@@ -173,6 +173,22 @@ describe('scrubTransaction', () => {
     expect(text).not.toContain('37491770058');
   });
 
+  it('blanks out a phone number, a token or coordinates that sit in the text of a description or a name, not only in a query', () => {
+    const scrubbed = scrubTransaction({
+      transaction: '/pickup/40.18123,44.51456',
+      contexts: { trace: { op: 'navigation', description: 'open /riders/+37491770058' } },
+      spans: [{ op: 'http.client', description: 'GET /confirm/Bearer 12|abcDEF.token-value' }],
+    });
+    const text = JSON.stringify(scrubbed);
+
+    expect(scrubbed.transaction).toBe('/pickup/[redacted]');
+    expect(scrubbed.contexts.trace.description).toBe('open /riders/[redacted]');
+    expect(scrubbed.spans[0]?.description).toBe('GET /confirm/[redacted]');
+    expect(text).not.toContain('37491770058');
+    expect(text).not.toContain('abcDEF');
+    expect(text).not.toContain('40.18123');
+  });
+
   it('keeps the address without its query, so a slow endpoint can still be found', () => {
     const scrubbed = scrubTransaction(transaction());
     const [request, screen] = scrubbed.spans;
