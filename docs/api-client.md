@@ -20,6 +20,9 @@ The root layout wraps the app in `<ApiProvider client={appApi.client} realtime={
 `createAppApi`). The provider reads the saved session at start-up, empties the cache on sign-out, and refetches what is on screen when the
 app returns to the foreground and when the realtime connection comes back.
 
+`useAppConfig({ app, platform, version })` is the one read that needs no session: the public start-up call (`GET /app-config`) that
+decides whether this build may run (see [navigation.md](navigation.md)).
+
 Hooks exist for every endpoint the backend has today (see `packages/api-client/src/react/queries.ts` and `mutations.ts`). Add a new
 endpoint to `src/resources/`, then its hook, and its recorded answer to the fixtures (below).
 

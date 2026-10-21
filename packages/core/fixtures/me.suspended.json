@@ -1,0 +1,35 @@
+{
+  "status": 200,
+  "headers": {
+    "x-ratelimit-limit": "120",
+    "x-ratelimit-remaining": "118"
+  },
+  "body": {
+    "user": {
+      "id": 3,
+      "name": "Fixture Suspended",
+      "phone": "+374*****055",
+      "email": null,
+      "email_verified": false,
+      "locale": "en",
+      "timezone": null,
+      "status": "suspended",
+      "modes": {
+        "is_rider": true,
+        "is_driver": false
+      },
+      "driver": null,
+      "rider": {
+        "rating": {
+          "average": null,
+          "count": 0
+        },
+        "outstanding_balance": {
+          "amount": 0,
+          "currency": "AMD"
+        },
+        "default_payment_method": null
+      }
+    }
+  }
+}

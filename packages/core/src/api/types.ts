@@ -7,6 +7,8 @@
  * the `Accept-Language` header.
  */
 
+import type { SocialProvider } from './requests.ts';
+
 /** An ISO 8601 instant such as `2026-10-16T07:31:28+00:00`. */
 export type IsoInstant = string;
 /** A calendar date, `YYYY-MM-DD`. */
@@ -298,4 +300,45 @@ export interface DriverAvailabilityResponse {
 export interface DriverLocationRecorded {
   /** `YYYY-MM-DDTHH:MM:SS.mmmZ`. */
   recorded_at: string;
+}
+
+// ---- app config (public, asked at every start before sign-in) ----
+
+export type AppPlatform = 'ios' | 'android';
+
+export interface AppConfigQuery {
+  app: AppClient;
+  platform: AppPlatform;
+  /** This build's version (`1.4.2`). Left out, the server treats the build as unsupported. */
+  version?: string | undefined;
+}
+
+export interface AppConfigUpdate {
+  minimum_version: string | null;
+  latest_version: string | null;
+  /** This build may not run any more: show the update screen and stop. */
+  force_update: boolean;
+  /** A newer build exists (always true when the update is forced). */
+  update_available: boolean;
+  store_url: string | null;
+}
+
+export interface AppConfigFeatures {
+  card_payments: boolean;
+  wallet: boolean;
+  masked_calls: boolean;
+  sos: boolean;
+  trip_share: boolean;
+  social_login: Record<SocialProvider, boolean>;
+}
+
+export interface AppConfig {
+  app: AppClient;
+  platform: AppPlatform;
+  update: AppConfigUpdate;
+  features: AppConfigFeatures;
+  support: { phone: string | null; email: string | null };
+  /** One URL (or `null`) per language. */
+  legal: { terms: Record<Locale, string | null>; privacy: Record<Locale, string | null> };
+  vehicle_classes: { id: VehicleClass; name: string }[];
 }

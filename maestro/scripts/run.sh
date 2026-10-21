@@ -8,8 +8,8 @@ app="${1:-}"
 shift || true
 
 case "$app" in
-  rider)  APP_ID="com.taxikosmos.rider.dev";  APP_NAME="TaxiKosmos (Dev)" ;;
-  driver) APP_ID="com.taxikosmos.driver.dev"; APP_NAME="TaxiKosmos Driver (Dev)" ;;
+  rider)  APP_ID="com.taxikosmos.rider.dev";  APP_NAME="TaxiKosmos (Dev)";        SCHEME="taxirider-dev" ;;
+  driver) APP_ID="com.taxikosmos.driver.dev"; APP_NAME="TaxiKosmos Driver (Dev)"; SCHEME="taxidriver-dev" ;;
   *) echo "usage: $0 rider|driver [maestro args]" >&2; exit 2 ;;
 esac
 
@@ -17,4 +17,4 @@ root="$(cd "$(dirname "$0")/../.." && pwd)"
 # shellcheck source=env.sh
 source "$(dirname "$0")/env.sh"
 
-exec maestro test -e "APP_ID=$APP_ID" -e "APP_NAME=$APP_NAME" "$@" "$root/maestro/flows"
+exec maestro test -e "APP_ID=$APP_ID" -e "APP_NAME=$APP_NAME" -e "SCHEME=$SCHEME" "$@" "$root/maestro/flows"

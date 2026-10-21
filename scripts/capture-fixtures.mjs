@@ -33,6 +33,9 @@ const TYPES = {
   'me.rider-updated': 'MeResponse',
   'me.rider-no-locale': 'MeResponse',
   'me.driver': 'MeResponse',
+  'me.suspended': 'MeResponse',
+  'app-config.ok': 'AppConfig',
+  'app-config.update-required': 'AppConfig',
   'saved-places.created': 'Data<SavedPlace>',
   'saved-places.list': 'Data<SavedPlace[]>',
   'saved-places.show': 'Data<SavedPlace>',
@@ -57,6 +60,7 @@ const TYPES = {
   'error.unauthenticated': 'ApiErrorBody',
   'error.validation': 'ApiErrorBody',
   'error.forbidden-ability': 'ApiErrorBody',
+  'error.account-suspended': 'ApiErrorBody',
   'error.not-found': 'ApiErrorBody',
   'error.driver-not-verified': 'ApiErrorBody',
   'error.invalid-code': 'ApiErrorBody',
@@ -238,6 +242,20 @@ async function main() {
       sessionName: 'auth.session.rider-no-locale',
     });
     await call('me.rider-no-locale', 'GET', '/me', { token: noLocale.access_token });
+
+    // ---- the app's start-up call (public, no token) and an account the backend blocked ----
+    await call('app-config.ok', 'GET', '/app-config', { query: { app: 'rider', platform: 'ios', version: '1.0.0' } });
+    await call('app-config.update-required', 'GET', '/app-config', {
+      query: { app: 'rider', platform: 'ios', version: '0.9.0' },
+    });
+    const blocked = await signIn('rider', '+37491770055', 'Fixture Suspended', { sessionName: null });
+    run('php', [
+      'artisan',
+      'tinker',
+      `--execute=App\\Models\\User::whereKey(${blocked.user.id})->update(['status' => 'suspended', 'suspension_reason' => 'Fixture']);`,
+    ]);
+    await call('me.suspended', 'GET', '/me', { token: blocked.access_token });
+    await call('error.account-suspended', 'GET', '/saved-places', { token: blocked.access_token });
 
     // ---- driver ----
     const driver = await signIn('driver', '+37491770059', 'Fixture Driver');

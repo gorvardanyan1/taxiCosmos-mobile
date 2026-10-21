@@ -3,6 +3,7 @@ import * as fixtures from '@taxikosmos/core/fixtures';
 import { act } from '@testing-library/react-native';
 
 import {
+  useAppConfig,
   useDebouncedValue,
   useDriverBankAccounts,
   useDriverDocuments,
@@ -152,6 +153,56 @@ describe('each read asks for the right resource and hands back the data', () => 
     await waitFor(() => expect(result.current.fetchStatus).toBe('idle'));
 
     expect(server.requests).toHaveLength(0);
+  });
+});
+
+describe('useAppConfig', () => {
+  it('asks for the start-up config without waiting for a session', async () => {
+    const { result, server } = await renderWithApi(
+      () => useAppConfig({ app: 'rider', platform: 'ios', version: '1.0.0' }),
+      [replyWith(fixtures.appConfigOk)],
+      { signedIn: null },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(server.requests).toHaveLength(1);
+    expect(server.requests[0]).toMatchObject({
+      path: '/app-config',
+      query: { app: 'rider', platform: 'ios', version: '1.0.0' },
+    });
+    expect(result.current.data?.update.force_update).toBe(false);
+  });
+
+  it('is not retried by the query: a failure is shown as failed at once, so the app can carry on', async () => {
+    const { result, server } = await renderWithApi(
+      () => useAppConfig({ app: 'rider', platform: 'ios', version: '1.0.0' }),
+      [
+        { status: 500, body: { message: 'boom' } },
+        { status: 500, body: { message: 'boom' } },
+      ],
+      { signedIn: null },
+    );
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    // The client itself tries a failing GET once more (the resource's retry); the query adds none on top.
+    expect(server.requests.length).toBeLessThanOrEqual(2);
+    expect(getApiError(result.current.error)).toMatchObject({ kind: 'server' });
+  });
+
+  it('keeps one answer per app, platform and version', async () => {
+    const { result, server } = await renderWithApi(
+      () => ({
+        current: useAppConfig({ app: 'rider', platform: 'ios', version: '1.0.0' }),
+        old: useAppConfig({ app: 'rider', platform: 'ios', version: '0.9.0' }),
+      }),
+      [replyWith(fixtures.appConfigOk), replyWith(fixtures.appConfigUpdateRequired)],
+      { signedIn: null },
+    );
+    await waitFor(() => expect(result.current.current.isSuccess && result.current.old.isSuccess).toBe(true));
+
+    expect(server.requests.map((r) => r.query.version).sort()).toEqual(['0.9.0', '1.0.0']);
+    expect(result.current.old.data?.update.force_update).toBe(true);
+    expect(result.current.current.data?.update.force_update).toBe(false);
   });
 });
 

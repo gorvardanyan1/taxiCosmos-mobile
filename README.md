@@ -11,11 +11,13 @@ packages/
   core/           framework-free shared code: build config, API types, errors, phone / money / idempotency helpers
   api-client/     typed /api/v1 client, session, realtime, React Query hooks
   ui/             design system ported from RiderTaxiAppTemplate: tokens, theme, i18n, components
+  app-shell/      what both apps share around their screens: the start-up gate, route groups, not-found
 docs/
   development.md  run the apps against the local backend
   environments.md development / staging / production, variables and secrets
   api-client.md   the API client, error model, idempotency, realtime, fixtures
   design-system.md the UI kit: tokens, theme, language, components
+  navigation.md   route tree, gating (update, blocked account), deep links, error boundary
   testing.md      Jest + React Native Testing Library, Maestro
 maestro/
   flows/          end-to-end flows (YAML), run on a device with the development build

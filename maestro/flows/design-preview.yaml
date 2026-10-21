@@ -1,4 +1,4 @@
-# Both apps (development builds): the UI-kit preview opens from the home screen, follows the theme and language pickers, and the
+# Both apps (development builds): the UI-kit preview opens from the sign-in screen, follows the theme and language pickers, and the
 # language is still there after the app is closed and opened again. Needs a build that is not "production".
 # Run with -e APP_ID=<bundle id> (see maestro/scripts/run.sh).
 appId: ${APP_ID}
