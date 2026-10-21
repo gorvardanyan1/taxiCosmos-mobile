@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/react-native';
-import { scrubEvent } from '@taxikosmos/core/config';
+import { scrubEvent, scrubTransaction } from '@taxikosmos/core/config';
 import * as SplashScreen from 'expo-splash-screen';
 import { renderRouter, screen } from 'expo-router/testing-library';
 
@@ -73,7 +73,7 @@ describe('rider app boot', () => {
     expect(SplashScreen.hideAsync).toHaveBeenCalledTimes(1);
   });
 
-  it('starts Sentry with the shared policy: off without a DSN, no personal data by default, every event scrubbed', () => {
+  it('starts Sentry with the shared policy: off without a DSN, no personal data by default, every error and every trace scrubbed', () => {
     expect(Sentry.init).toHaveBeenCalledWith({
       dsn: undefined,
       enabled: false,
@@ -81,6 +81,7 @@ describe('rider app boot', () => {
       sendDefaultPii: false,
       tracesSampleRate: 1,
       beforeSend: scrubEvent,
+      beforeSendTransaction: scrubTransaction,
     });
   });
 
@@ -99,5 +100,25 @@ describe('rider app boot', () => {
     expect(sent).not.toHaveProperty('request');
     expect(JSON.stringify(sent)).not.toContain('37491770058');
     expect(JSON.stringify(sent)).not.toContain('secret-token');
+  });
+
+  it('removes the coordinates and typed addresses of a request from a performance trace before it is sent', () => {
+    const options = jest.mocked(Sentry.init).mock.calls[0]?.[0] as unknown as {
+      beforeSendTransaction: (event: object) => Record<string, unknown>;
+    };
+    const sent = options.beforeSendTransaction({
+      type: 'transaction',
+      spans: [
+        {
+          op: 'http.client',
+          description: 'GET https://api.test/api/v1/geo/reverse?lat=40.18123&lng=44.51456',
+          data: { 'http.query': '?lat=40.18123&lng=44.51456', 'http.method': 'GET' },
+        },
+      ],
+    });
+
+    expect(JSON.stringify(sent)).not.toContain('40.18123');
+    expect(JSON.stringify(sent)).not.toContain('lat=');
+    expect(JSON.stringify(sent)).toContain('https://api.test/api/v1/geo/reverse');
   });
 });

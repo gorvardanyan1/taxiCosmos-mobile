@@ -55,6 +55,8 @@ button renders the screens again without restarting the app. A reporter that fai
 
 Sentry gets `beforeSend: scrubEvent` (core, from `monitoringOptions`): no user, request data, extra data or device name; phone numbers, bearer
 tokens and coordinates are blanked out of messages, exception text and breadcrumbs; breadcrumb data is dropped.
+Performance traces go through a different hook, so they get `beforeSendTransaction: scrubTransaction`: the same removals plus every query string
+(`/geo/reverse?lat=…&lng=…`, the address a rider typed) from the transaction name and each span's description and data.
 
 ## Testing it
 

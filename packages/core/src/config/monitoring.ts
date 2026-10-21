@@ -7,8 +7,10 @@ export interface MonitoringOptions {
   environment: string;
   sendDefaultPii: false;
   tracesSampleRate: number;
-  /** Removes personal data from every event before it is sent (see `scrubEvent`). */
+  /** Removes personal data from every error event before it is sent (see `scrubEvent`). */
   beforeSend: typeof scrubEvent;
+  /** The same for performance traces, which Sentry sends through a different hook and which carry the address of every request (see `scrubTransaction`). */
+  beforeSendTransaction: typeof scrubTransaction;
 }
 
 /**
@@ -23,6 +25,7 @@ export function monitoringOptions(config: PublicAppConfig): MonitoringOptions {
     sendDefaultPii: false,
     tracesSampleRate: config.environment === 'production' ? 0.1 : 1,
     beforeSend: scrubEvent,
+    beforeSendTransaction: scrubTransaction,
   };
 }
 
@@ -68,6 +71,75 @@ export function scrubEvent<T extends object>(event: T): T {
       ...(typeof crumb.message === 'string' ? { message: scrubText(crumb.message) } : {}),
       data: undefined,
     }));
+  }
+
+  return scrubbed as T;
+}
+
+/** Span data that is only the query string of a request, or a part of it. */
+const QUERY_KEYS = new Set([
+  'http.query',
+  'http.fragment',
+  'url.query',
+  'url.fragment',
+  'http.request.query',
+  'query',
+  'query_string',
+]);
+
+/** A span description or transaction name with every query string removed: `GET https://api/x?lat=1&lng=2` becomes `GET https://api/x`. */
+function withoutQuery(text: string): string {
+  return scrubText(text).replace(/\?[^\s#]*/g, '');
+}
+
+/** The data of a span: query strings dropped, addresses cut at the `?`, and phone numbers, tokens and coordinates blanked out of any text. */
+function cleanSpanData(data: unknown): unknown {
+  if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+    return data;
+  }
+
+  return Object.fromEntries(
+    Object.entries(data)
+      .filter(([key]) => !QUERY_KEYS.has(key))
+      .map(([key, value]) => {
+        if (typeof value !== 'string') {
+          return [key, value];
+        }
+
+        // An address (`https://…`, `/api/v1/…`) loses its query; any other text is only blanked out.
+        return [key, /^(https?:\/\/|\/)/i.test(value) ? withoutQuery(value) : scrubText(value)];
+      }),
+  );
+}
+
+function cleanSpan(span: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...span,
+    ...(typeof span.description === 'string' ? { description: withoutQuery(span.description) } : {}),
+    ...(span.data === undefined ? {} : { data: cleanSpanData(span.data) }),
+  };
+}
+
+/**
+ * Applied to every performance trace before it leaves the phone (`beforeSendTransaction`). Sentry records every network request of a
+ * sampled session as a span, with the whole query string (`/geo/reverse?lat=…&lng=…`, the address a rider typed), which `beforeSend` never
+ * sees because it only handles errors. This removes what `scrubEvent` removes from an error, plus every query string, from the transaction
+ * name, each span's description and data, and the root span's data.
+ */
+export function scrubTransaction<T extends object>(event: T): T {
+  const scrubbed = scrubEvent(event) as Record<string, unknown>;
+
+  if (typeof scrubbed.transaction === 'string') {
+    scrubbed.transaction = withoutQuery(scrubbed.transaction);
+  }
+
+  const contexts = scrubbed.contexts as { trace?: Record<string, unknown> } | undefined;
+  if (contexts?.trace !== undefined) {
+    contexts.trace = cleanSpan(contexts.trace);
+  }
+
+  if (Array.isArray(scrubbed.spans)) {
+    scrubbed.spans = scrubbed.spans.map((span: Record<string, unknown>) => cleanSpan(span));
   }
 
   return scrubbed as T;
