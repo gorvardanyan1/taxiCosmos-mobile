@@ -2,6 +2,8 @@ import type { LatLng } from '@taxikosmos/core';
 
 /** One place for every cache key, so a write knows exactly which reads it makes stale. */
 export const queryKeys = {
+  appConfig: (app: string, platform: string, version: string | undefined) =>
+    ['app-config', app, platform, version ?? null] as const,
   me: ['me'] as const,
   savedPlaces: {
     all: ['saved-places'] as const,

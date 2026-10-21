@@ -3,6 +3,7 @@
 // re-run the script and `pnpm typecheck` shows exactly which type is out of date.
 import type {
   ApiErrorBody,
+  AppConfig,
   AuthSession,
   Data,
   DeviceResponse,
@@ -22,6 +23,124 @@ import type {
   SupportMessageReceipt,
   SupportTicket,
 } from '../api/index.ts';
+
+/** app-config.ok: HTTP 200 with x-ratelimit-limit, x-ratelimit-remaining */
+export const appConfigOk = {
+  status: 200,
+  headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '59' },
+  body: {
+    app: 'rider',
+    platform: 'ios',
+    update: {
+      minimum_version: '1.0.0',
+      latest_version: '0.0.0',
+      force_update: false,
+      update_available: false,
+      store_url: null,
+    },
+    features: {
+      card_payments: false,
+      wallet: false,
+      masked_calls: false,
+      sos: false,
+      trip_share: false,
+      social_login: {
+        google: false,
+        apple: false,
+        facebook: false,
+      },
+    },
+    support: {
+      phone: null,
+      email: null,
+    },
+    legal: {
+      terms: {
+        en: null,
+        hy: null,
+        ru: null,
+      },
+      privacy: {
+        en: null,
+        hy: null,
+        ru: null,
+      },
+    },
+    vehicle_classes: [
+      {
+        id: 'economy',
+        name: 'Economy',
+      },
+      {
+        id: 'comfort',
+        name: 'Comfort',
+      },
+      {
+        id: 'business',
+        name: 'Business',
+      },
+    ],
+  },
+} satisfies { status: number; headers: Record<string, string>; body: AppConfig };
+
+/** app-config.update-required: HTTP 200 with x-ratelimit-limit, x-ratelimit-remaining */
+export const appConfigUpdateRequired = {
+  status: 200,
+  headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '58' },
+  body: {
+    app: 'rider',
+    platform: 'ios',
+    update: {
+      minimum_version: '1.0.0',
+      latest_version: '0.0.0',
+      force_update: true,
+      update_available: true,
+      store_url: null,
+    },
+    features: {
+      card_payments: false,
+      wallet: false,
+      masked_calls: false,
+      sos: false,
+      trip_share: false,
+      social_login: {
+        google: false,
+        apple: false,
+        facebook: false,
+      },
+    },
+    support: {
+      phone: null,
+      email: null,
+    },
+    legal: {
+      terms: {
+        en: null,
+        hy: null,
+        ru: null,
+      },
+      privacy: {
+        en: null,
+        hy: null,
+        ru: null,
+      },
+    },
+    vehicle_classes: [
+      {
+        id: 'economy',
+        name: 'Economy',
+      },
+      {
+        id: 'comfort',
+        name: 'Comfort',
+      },
+      {
+        id: 'business',
+        name: 'Business',
+      },
+    ],
+  },
+} satisfies { status: number; headers: Record<string, string>; body: AppConfig };
 
 /** auth.otp-requested: HTTP 202 with x-ratelimit-limit, x-ratelimit-remaining */
 export const authOtpRequested = {
@@ -389,6 +508,16 @@ export const driverVehicles = {
   },
 } satisfies { status: number; headers: Record<string, string>; body: Data<DriverVehicle[]> };
 
+/** error.account-suspended: HTTP 403 with x-ratelimit-limit, x-ratelimit-remaining */
+export const errorAccountSuspended = {
+  status: 403,
+  headers: { 'x-ratelimit-limit': '120', 'x-ratelimit-remaining': '117' },
+  body: {
+    message: 'This account is suspended.',
+    code: 'account_suspended',
+  },
+} satisfies { status: number; headers: Record<string, string>; body: ApiErrorBody };
+
 /** error.driver-not-verified: HTTP 403 with x-ratelimit-limit, x-ratelimit-remaining */
 export const errorDriverNotVerified = {
   status: 403,
@@ -715,6 +844,40 @@ export const meRiderUpdated = {
       locale: 'ru',
       timezone: null,
       status: 'active',
+      modes: {
+        is_rider: true,
+        is_driver: false,
+      },
+      driver: null,
+      rider: {
+        rating: {
+          average: null,
+          count: 0,
+        },
+        outstanding_balance: {
+          amount: 0,
+          currency: 'AMD',
+        },
+        default_payment_method: null,
+      },
+    },
+  },
+} satisfies { status: number; headers: Record<string, string>; body: MeResponse };
+
+/** me.suspended: HTTP 200 with x-ratelimit-limit, x-ratelimit-remaining */
+export const meSuspended = {
+  status: 200,
+  headers: { 'x-ratelimit-limit': '120', 'x-ratelimit-remaining': '118' },
+  body: {
+    user: {
+      id: 3,
+      name: 'Fixture Suspended',
+      phone: '+374*****055',
+      email: null,
+      email_verified: false,
+      locale: 'en',
+      timezone: null,
+      status: 'suspended',
       modes: {
         is_rider: true,
         is_driver: false,

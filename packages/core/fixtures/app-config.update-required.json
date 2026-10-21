@@ -1,0 +1,60 @@
+{
+  "status": 200,
+  "headers": {
+    "x-ratelimit-limit": "60",
+    "x-ratelimit-remaining": "58"
+  },
+  "body": {
+    "app": "rider",
+    "platform": "ios",
+    "update": {
+      "minimum_version": "1.0.0",
+      "latest_version": "0.0.0",
+      "force_update": true,
+      "update_available": true,
+      "store_url": null
+    },
+    "features": {
+      "card_payments": false,
+      "wallet": false,
+      "masked_calls": false,
+      "sos": false,
+      "trip_share": false,
+      "social_login": {
+        "google": false,
+        "apple": false,
+        "facebook": false
+      }
+    },
+    "support": {
+      "phone": null,
+      "email": null
+    },
+    "legal": {
+      "terms": {
+        "en": null,
+        "hy": null,
+        "ru": null
+      },
+      "privacy": {
+        "en": null,
+        "hy": null,
+        "ru": null
+      }
+    },
+    "vehicle_classes": [
+      {
+        "id": "economy",
+        "name": "Economy"
+      },
+      {
+        "id": "comfort",
+        "name": "Comfort"
+      },
+      {
+        "id": "business",
+        "name": "Business"
+      }
+    ]
+  }
+}

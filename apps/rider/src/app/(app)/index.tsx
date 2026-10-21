@@ -3,9 +3,9 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
-import { appConfig } from '../config';
+import { appConfig } from '../../config';
 
-/** Placeholder home until the navigation shell (M1-T4); proves the build boots with the right identity and environment. */
+/** Placeholder home of the signed-in app until its real screens arrive; shows the build's identity and environment. */
 export default function Home() {
   const router = useRouter();
   const { t } = useUiTranslation();
@@ -15,8 +15,12 @@ export default function Home() {
       <Text accessibilityRole="header" className="text-2xl font-manrope-extrabold text-slate-950 dark:text-white">
         {Constants.expoConfig?.name}
       </Text>
-      <Text className="text-sm text-slate-500 dark:text-slate-400">Environment: {appConfig.environment}</Text>
-      <Text className="text-sm text-slate-500 dark:text-slate-400">API: {appConfig.apiUrl}</Text>
+      <Text className="text-sm text-slate-500 dark:text-slate-400">
+        {t('shell.homeEnvironment', { value: appConfig.environment })}
+      </Text>
+      <Text className="text-sm text-slate-500 dark:text-slate-400">
+        {t('shell.homeApi', { value: appConfig.apiUrl })}
+      </Text>
       {appConfig.environment !== 'production' ? (
         <Button className="mt-4" size="sm" label={t('preview.title')} onPress={() => router.push('/design-preview')} />
       ) : null}

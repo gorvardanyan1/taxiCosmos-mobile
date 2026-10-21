@@ -1,0 +1,11 @@
+{
+  "status": 403,
+  "headers": {
+    "x-ratelimit-limit": "120",
+    "x-ratelimit-remaining": "117"
+  },
+  "body": {
+    "message": "This account is suspended.",
+    "code": "account_suspended"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@taxikosmos/app-shell",
+  "version": "0.0.0",
+  "private": true,
+  "description": "What both apps share around their screens: the start-up gate (update required, blocked account, account unavailable), the signed-in and signed-out route groups with the return-to-link redirect, the error boundary and the not-found screen.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@taxikosmos/api-client": "workspace:*",
+    "@taxikosmos/core": "workspace:*",
+    "@taxikosmos/ui": "workspace:*"
+  },
+  "peerDependencies": {
+    "expo-router": "~57.0.28",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/react": "~19.2.2",
+    "expo": "~57.0.30",
+    "expo-router": "~57.0.28",
+    "nativewind": "4.2.7",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-css-interop": "0.2.7",
+    "typescript": "~6.0.3"
+  }
+}

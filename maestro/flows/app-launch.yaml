@@ -1,14 +1,16 @@
-# Both apps: a fresh install starts, shows its own name and the environment it was built for.
-# Run with -e APP_ID=<bundle id> -e APP_NAME=<name under the icon> (see maestro/scripts/run.sh).
+# Both apps: a fresh install starts on the sign-in screen, never on a signed-in screen and never on the router's technical error page.
+# Run with -e APP_ID=<bundle id> (see maestro/scripts/run.sh); the backend must be running (the app asks it for its start-up config).
 appId: ${APP_ID}
-name: App launches on a fresh install
+name: App launches on a fresh install and asks for sign-in
 tags:
   - smoke
+  - auth
 ---
 - launchApp:
     clearState: true
-- assertVisible:
-    text: ${APP_NAME}
-- assertVisible: 'Environment: development'
-- assertVisible: 'API: .*'
+- extendedWaitUntil:
+    visible: 'Sign in'
+    timeout: 20000
 - assertNotVisible: 'Unmatched Route'
+- assertNotVisible: 'Update required'
+- assertNotVisible: 'Something went wrong'

@@ -206,6 +206,17 @@ const cases: Case[] = [
     query: { session: 'search-1' },
     result: fixtures.geoPlace.body.place,
   },
+  // ---- the start-up call: public, asked before anyone signs in ----
+  {
+    name: 'appConfig.get',
+    call: (api) => api.appConfig.get({ app: 'rider', platform: 'ios', version: '1.0.0' }),
+    reply: replyWith(fixtures.appConfigOk),
+    method: 'GET',
+    path: '/app-config',
+    query: { app: 'rider', platform: 'ios', version: '1.0.0' },
+    result: fixtures.appConfigOk.body,
+    anonymous: true,
+  },
   {
     name: 'geo.reverse',
     call: (api) => api.geo.reverse(point),
@@ -416,6 +427,50 @@ describe.each(cases)('$name', ({ call, reply, method, path, query, body, result,
   it('throws the tagged error when the server refuses', async () => {
     const { client } = makeClient([replyWith(fixtures.errorValidation)]);
     const error = await call(createApi(client)).catch((e: unknown) => e);
+
+    expect(getApiError(error)).toMatchObject({ kind: 'validation' });
+  });
+});
+
+describe('appConfig.get', () => {
+  it("never carries the person's token, even when someone is signed in", async () => {
+    const { client, server } = makeClient([replyWith(fixtures.appConfigOk)]);
+    await createApi(client).appConfig.get({ app: 'driver', platform: 'android', version: '1.0.0' });
+
+    expect(server.requests[0]?.headers.authorization).toBeUndefined();
+  });
+
+  it('leaves the version out of the request when the build has none, so the server treats it as unsupported', async () => {
+    const { client, server } = makeClient([replyWith(fixtures.appConfigUpdateRequired)]);
+    const config = await createApi(client).appConfig.get({ app: 'rider', platform: 'ios', version: undefined });
+
+    expect(server.requests[0]?.query).toEqual({ app: 'rider', platform: 'ios' });
+    expect(config.update.force_update).toBe(true);
+  });
+
+  it('tries once more when the connection drops, then gives the answer', async () => {
+    const { client, server } = makeClient(['network-error', replyWith(fixtures.appConfigOk)]);
+    const config = await createApi(client).appConfig.get({ app: 'rider', platform: 'ios', version: '1.0.0' });
+
+    expect(server.requests).toHaveLength(2);
+    expect(config.update.force_update).toBe(false);
+  });
+
+  it('gives up with the tagged error after the second failure', async () => {
+    const { client, server } = makeClient(['network-error', 'network-error']);
+    const error = await createApi(client)
+      .appConfig.get({ app: 'rider', platform: 'ios', version: '1.0.0' })
+      .catch((e: unknown) => e);
+
+    expect(server.requests).toHaveLength(2);
+    expect(getApiError(error)).toMatchObject({ kind: 'network' });
+  });
+
+  it('is rejected with the field error for an app the server does not know', async () => {
+    const { client } = makeClient([replyWith(fixtures.errorValidation)]);
+    const error = await createApi(client)
+      .appConfig.get({ app: 'rider', platform: 'ios', version: '1.0.0' })
+      .catch((e: unknown) => e);
 
     expect(getApiError(error)).toMatchObject({ kind: 'validation' });
   });

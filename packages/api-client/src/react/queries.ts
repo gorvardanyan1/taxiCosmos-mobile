@@ -1,4 +1,6 @@
 import type {
+  AppConfig,
+  AppConfigQuery,
   DriverBankAccount,
   DriverDocumentsResponse,
   DriverVehicle,
@@ -26,6 +28,21 @@ interface QueryOptions {
 /** A read that waits for a signed-in session: nothing is requested before the saved session is read, or after sign-out. */
 function useSignedIn(enabled = true): boolean {
   return useSessionStatus() === 'signed_in' && enabled;
+}
+
+/**
+ * The public start-up config of this build. It does not wait for a session (it is asked before anyone signs in), is kept for ten minutes,
+ * and is asked again when the app comes back to the foreground once stale. A failure is not retried endlessly: the shell lets the app carry on.
+ */
+export function useAppConfig(query: AppConfigQuery): UseQueryResult<AppConfig> {
+  const api = useApi();
+
+  return useQuery({
+    queryKey: queryKeys.appConfig(query.app, query.platform, query.version),
+    queryFn: ({ signal }) => api.appConfig.get(query, signal),
+    staleTime: 10 * 60_000,
+    retry: false,
+  });
 }
 
 export function useMe(options: QueryOptions = {}): UseQueryResult<Me> {
