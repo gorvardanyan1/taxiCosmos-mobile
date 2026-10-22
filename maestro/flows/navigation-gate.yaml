@@ -1,6 +1,6 @@
 # Both apps: someone who is not signed in cannot get into the signed-in app by any door. The app's address opens the sign-in screen, and an address
-# that leads nowhere shows a plain "page not found" with a way back. (Continuing to the opened link after signing in needs the sign-in form
-# of M2-T1; it is covered by the Jest route tests until then.)
+# that leads nowhere shows a plain "page not found" with a way back. (Continuing to the opened link after signing in is covered by the Jest route tests;
+# the sign-in itself is auth-otp-sign-in.yaml.)
 # Run with -e APP_ID=<bundle id> -e SCHEME=<url scheme> (see maestro/scripts/run.sh); the backend must be running.
 appId: ${APP_ID}
 name: A signed-out visitor is sent to sign-in and a dead link is explained
@@ -11,12 +11,12 @@ tags:
 - launchApp:
     clearState: true
 - extendedWaitUntil:
-    visible: 'Sign in'
+    visible: 'Enter your phone number'
     timeout: 20000
 # The app's own home address, opened from outside: still the sign-in screen.
 - openLink: ${SCHEME}://
 - extendedWaitUntil:
-    visible: 'Sign in'
+    visible: 'Enter your phone number'
     timeout: 10000
 - assertNotVisible: 'Environment: development'
 # A link that matches nothing.
@@ -27,5 +27,5 @@ tags:
 - assertNotVisible: 'Unmatched Route'
 - tapOn: 'Go to the start'
 - extendedWaitUntil:
-    visible: 'Sign in'
+    visible: 'Enter your phone number'
     timeout: 10000

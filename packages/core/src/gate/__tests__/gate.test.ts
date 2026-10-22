@@ -14,6 +14,32 @@ describe('resolveGate', () => {
     expect(resolveGate(input())).toEqual({ kind: 'ready' });
   });
 
+  describe('asks a first-time rider for their name', () => {
+    const unnamed = { state: 'ready' as const, status: 'active' as const, needsName: true };
+
+    it('before the app, once the account is known', () => {
+      expect(resolveGate(input({ me: unnamed }))).toEqual({ kind: 'needs_name' });
+    });
+
+    it('not when the name is already there', () => {
+      expect(resolveGate(input({ me: { ...active, needsName: false } }))).toEqual({ kind: 'ready' });
+    });
+
+    it.each(['suspended', 'deactivated', 'pending_deletion'] as const)(
+      'a %s account is blocked, not asked',
+      (status) => {
+        expect(resolveGate(input({ me: { ...unnamed, status } }))).toEqual({ kind: 'blocked', reason: status });
+      },
+    );
+
+    it('an outdated build still comes first, and waiting still waits', () => {
+      expect(resolveGate(input({ me: unnamed, config: { state: 'ready', forceUpdate: true } }))).toEqual({
+        kind: 'update_required',
+      });
+      expect(resolveGate(input({ me: { ...unnamed, state: 'loading' } }))).toEqual({ kind: 'loading' });
+    });
+  });
+
   it('lets a signed-out person see the sign-in screens', () => {
     expect(resolveGate(input({ session: 'signed_out', me: { state: 'idle' } }))).toEqual({ kind: 'signed_out' });
   });

@@ -5,7 +5,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { AccountBlockedScreen } from './screens/AccountBlockedScreen';
 import { AccountUnavailableScreen } from './screens/AccountUnavailableScreen';
+import { NameScreen } from './screens/NameScreen';
 import { UpdateRequiredScreen } from './screens/UpdateRequiredScreen';
+import { ShellConfigContext } from './shellConfig';
 import { useAppGate } from './useAppGate';
 
 export interface AppShellProps {
@@ -20,7 +22,8 @@ export interface AppShellProps {
 /**
  * Wraps the whole app, below the UI provider and the API provider:
  *  - an error anywhere below is caught, reported, and replaced by a screen with a retry button;
- *  - before the screens, the gate decides whether this build may run, who is signed in and whether their account may use the app.
+ *  - before the screens, the gate decides whether this build may run, who is signed in, whether their account may use the app, and (for a
+ *    new rider) asks for their name.
  *
  * The screens are shown once something real can be shown (signed out, or signed in with a usable account). After that they stay mounted
  * under whatever the gate shows later (a suspension noticed on returning to the app, an update that became mandatory), so the router keeps
@@ -51,6 +54,8 @@ function Gate({ app, version, children }: { app: AppClient; version: string | un
       <AccountBlockedScreen reason={gate.reason} support={config?.support} />
     ) : gate.kind === 'account_unavailable' ? (
       <AccountUnavailableScreen onRetry={retry} />
+    ) : gate.kind === 'needs_name' ? (
+      <NameScreen />
     ) : null;
 
   if (overlay === null && !shown) {
@@ -71,7 +76,7 @@ function Gate({ app, version, children }: { app: AppClient; version: string | un
         accessibilityElementsHidden={covered}
         importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}
       >
-        {children}
+        <ShellConfigContext.Provider value={config}>{children}</ShellConfigContext.Provider>
       </View>
       {covered ? <View style={StyleSheet.absoluteFill}>{overlay}</View> : null}
     </View>

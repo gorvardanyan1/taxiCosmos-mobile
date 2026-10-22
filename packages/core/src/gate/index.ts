@@ -14,7 +14,12 @@ export interface GateInput {
   /** The public app-config call: asked first, before anyone signs in. */
   config: { state: AsyncState; forceUpdate?: boolean | undefined };
   /** `GET /me` of the signed-in person; `idle` while nobody is signed in. */
-  me: { state: AsyncState; status?: UserStatus | undefined };
+  me: {
+    state: AsyncState;
+    status?: UserStatus | undefined;
+    /** The account has no name yet and this app needs one (riders are asked once, after the first sign-in). */
+    needsName?: boolean | undefined;
+  };
 }
 
 export type Gate =
@@ -28,6 +33,8 @@ export type Gate =
   | { kind: 'blocked'; reason: Exclude<UserStatus, 'active'> }
   /** The account could not be loaded (no connection, server down): say so and let the person retry, never show a half-known app. */
   | { kind: 'account_unavailable' }
+  /** A first-time rider: the one question left before the app, their name. */
+  | { kind: 'needs_name' }
   /** Everything is in order. */
   | { kind: 'ready' };
 
@@ -53,7 +60,11 @@ export function resolveGate({ session, config, me }: GateInput): Gate {
     return { kind: 'account_unavailable' };
   }
 
-  return me.status === 'active' ? { kind: 'ready' } : { kind: 'blocked', reason: me.status };
+  if (me.status !== 'active') {
+    return { kind: 'blocked', reason: me.status };
+  }
+
+  return me.needsName === true ? { kind: 'needs_name' } : { kind: 'ready' };
 }
 
 const MAX_NEXT_LENGTH = 300;
