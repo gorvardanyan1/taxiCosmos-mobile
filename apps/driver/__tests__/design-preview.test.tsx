@@ -83,7 +83,7 @@ describe('driver design preview', () => {
     mockEnvironment.mockReturnValue('production');
     renderRouter('./src/app', { initialUrl: '/' });
 
-    expect(await screen.findByRole('header', { name: 'Sign in' })).toBeOnTheScreen();
+    expect(await screen.findByRole('header', { name: 'Enter your phone number' })).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Design system' })).not.toBeOnTheScreen();
   });
 

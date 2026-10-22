@@ -47,7 +47,14 @@ export function useAppGate({ app, version }: AppIdentity): AppGate {
     session,
     config: { state: stateOf(config), forceUpdate: config.data?.update.force_update },
     me:
-      session === 'signed_in' ? { state: stateOf(me), status: me.data?.status } : { state: 'idle', status: undefined },
+      session === 'signed_in'
+        ? {
+            state: stateOf(me),
+            status: me.data?.status,
+            // Only riders are asked: a driver's name comes from their application.
+            needsName: app === 'rider' && me.data !== undefined && (me.data.name ?? '').trim() === '',
+          }
+        : { state: 'idle', status: undefined },
   });
 
   return {

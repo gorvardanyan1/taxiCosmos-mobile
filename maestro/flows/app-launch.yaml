@@ -9,7 +9,7 @@ tags:
 - launchApp:
     clearState: true
 - extendedWaitUntil:
-    visible: 'Sign in'
+    visible: 'Enter your phone number'
     timeout: 20000
 - assertNotVisible: 'Unmatched Route'
 - assertNotVisible: 'Update required'

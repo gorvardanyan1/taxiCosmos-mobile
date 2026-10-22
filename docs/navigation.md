@@ -10,7 +10,7 @@ src/app/
   (app)/             the signed-in app. _layout.tsx sends anyone signed out to /sign-in?next=<where they were going>
     index.tsx        placeholder home (the real screens arrive with M2+)
   (auth)/            the signed-out screens. _layout.tsx sends anyone signed in on to `next` (or the start)
-    sign-in.tsx      placeholder until M2-T1 puts the phone form here
+    sign-in.tsx      phone number, then the code (`SignInScreen`); hands the install id from `appApi.getDeviceId`
   design-preview.tsx development/staging tool, outside both groups
   +not-found.tsx     a link that leads nowhere: a plain page with a way back
 ```
@@ -46,6 +46,21 @@ A link such as `taxirider://trips/42` opens its screen from a cold start. If nob
 `/sign-in?next=%2Ftrips%2F42`; once signed in, `(auth)/_layout` follows `next`. `next` comes from a link anyone can craft, so
 `safeNextPath` (core) accepts only a path inside the app: no other scheme, no `//host`, no backslashes or control characters, no
 sign-in screens, at most 300 characters. Universal (https) links are not part of the MVP.
+
+## Signing in (`SignInScreen`, `NameScreen`)
+
+Two steps on one screen: the phone number (`PhoneField`, sent as E.164 with `app`), then the 6-digit code. Signing in saves the session; the
+`(auth)` group then moves the person to `next`, so the screens never navigate themselves. The consent line links the terms and privacy pages from
+`GET /app-config` (`legal`, per language; a link that is missing or not `https` is left out).
+
+The server answers every bad code with the same 422 ("invalid or has expired"), so the app tells the cases apart itself (`@taxikosmos/core`
+`auth`): the code lives `expires_in` seconds (5 minutes), and five wrong guesses lock it (the server's limit). _Wrong_ and _one try left_ keep
+the field open; _expired_ and _locked_ disable it and make **Send a new code** the main button. A 429 on either call shows the wait from
+`Retry-After` and is not counted as a wrong guess. The request answers 202 without a wait time, so **Send a new code** is offered 60 seconds
+after the last one (`DEFAULT_RESEND_COOLDOWN_SECONDS`); a 429 on a number holds that number (not others) until the server's wait is over.
+
+A first-time **rider** (account without a name) gets the gate kind `needs_name`: `NameScreen` is drawn over the app until `PATCH /me` saves a
+name (1 to 120 characters). Drivers are never asked; their name comes from the application (M5-T1).
 
 ## Errors
 

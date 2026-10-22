@@ -59,7 +59,7 @@ describe('driver app boot', () => {
   it('boots a fresh install to the sign-in screen, not to the home screen', async () => {
     renderRouter('./src/app', { initialUrl: '/' });
 
-    expect(await screen.findByRole('header', { name: 'Sign in' })).toBeOnTheScreen();
+    expect(await screen.findByRole('header', { name: 'Enter your phone number' })).toBeOnTheScreen();
     expect(screen.queryByRole('header', { name: 'TaxiKosmos Driver (Dev)' })).not.toBeOnTheScreen();
   });
 

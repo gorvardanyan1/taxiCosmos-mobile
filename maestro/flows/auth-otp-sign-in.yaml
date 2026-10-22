@@ -1,0 +1,55 @@
+# Both apps: sign in with a phone number and the code we text. Uses the backend's test numbers (OTP_TEST_PHONES, +37491770001 to +37491770039),
+# which accept the fixed code 123456 (OTP_TEST_CODE); the backend must run with both set. A first-time rider is then asked for a name; a driver is not.
+# The app stays signed in across a restart, and a wrong code is refused without signing in.
+# Run with -e APP_ID=<bundle id> (see maestro/scripts/run.sh); the device language must be English.
+appId: ${APP_ID}
+name: A person signs in with their phone number and a code, and stays signed in
+tags:
+  - smoke
+  - auth
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'Enter your phone number'
+    timeout: 20000
+- tapOn: 'Phone number'
+- inputText: '091770001'
+- tapOn: 'Send code'
+- extendedWaitUntil:
+    visible: 'Enter the code'
+    timeout: 15000
+- assertVisible: 'We sent a 6-digit code to +374 91 770001.'
+# A wrong code is refused and the person stays on the code screen.
+- tapOn: 'Verification code'
+- inputText: '000000'
+- extendedWaitUntil:
+    visible: 'That code is not right. Check it and try again.'
+    timeout: 15000
+- assertNotVisible: 'Environment: development'
+# The right code signs in.
+- tapOn: 'Verification code'
+- inputText: '123456'
+# A first-time rider is asked for a name once; a driver goes straight in.
+- extendedWaitUntil:
+    visible: 'Environment: development|What should we call you?'
+    timeout: 20000
+- runFlow:
+    when:
+      visible: 'What should we call you?'
+    commands:
+      - tapOn: 'Your name'
+      - inputText: 'Maestro Rider'
+      - tapOn: 'Continue'
+- extendedWaitUntil:
+    visible: 'Environment: development'
+    timeout: 20000
+- assertNotVisible: 'Enter your phone number'
+# Closing the app and opening it again keeps the person signed in: no sign-in, no name question.
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: 'Environment: development'
+    timeout: 20000
+- assertNotVisible: 'Enter your phone number'
+- assertNotVisible: 'What should we call you?'

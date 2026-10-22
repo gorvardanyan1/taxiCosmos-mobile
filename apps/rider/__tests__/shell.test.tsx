@@ -104,7 +104,7 @@ describe('signed out: the app sends people to sign-in, and brings them back', ()
   it('shows the sign-in screen on a fresh install, remembering the start screen as where to go next', async () => {
     const { getPathname, getSearchParams } = renderRouter(routes, { initialUrl: '/' });
 
-    expect(await screen.findByRole('header', { name: 'Sign in' })).toBeOnTheScreen();
+    expect(await screen.findByRole('header', { name: 'Enter your phone number' })).toBeOnTheScreen();
     expect(screen.queryByRole('header', { name: 'TaxiKosmos (Dev)' })).not.toBeOnTheScreen();
     expect(getPathname()).toBe('/sign-in');
     expect(getSearchParams()).toEqual({ next: '/' });
@@ -113,7 +113,7 @@ describe('signed out: the app sends people to sign-in, and brings them back', ()
   it('lands on sign-in from a deep link into the signed-in app, and after signing in continues to that link', async () => {
     const { getPathname, getSearchParams } = renderRouter(routes, { initialUrl: '/trips/42' });
 
-    expect(await screen.findByRole('header', { name: 'Sign in' })).toBeOnTheScreen();
+    expect(await screen.findByRole('header', { name: 'Enter your phone number' })).toBeOnTheScreen();
     expect(screen.queryByRole('header', { name: 'Trip 42' })).not.toBeOnTheScreen();
     expect(getSearchParams()).toEqual({ next: '/trips/42' });
 
@@ -121,12 +121,12 @@ describe('signed out: the app sends people to sign-in, and brings them back', ()
 
     expect(await screen.findByRole('header', { name: 'Trip 42' })).toBeOnTheScreen();
     expect(getPathname()).toBe('/trips/42');
-    expect(screen.queryByRole('header', { name: 'Sign in' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('header', { name: 'Enter your phone number' })).not.toBeOnTheScreen();
   });
 
   it('follows a valid return address that arrives in the link itself, not only the one the app adds', async () => {
     const { getPathname } = renderRouter(routes, { initialUrl: `/sign-in?next=${encodeURIComponent('/trips/42')}` });
-    await screen.findByRole('header', { name: 'Sign in' });
+    await screen.findByRole('header', { name: 'Enter your phone number' });
 
     await act(signIn);
 
@@ -136,7 +136,7 @@ describe('signed out: the app sends people to sign-in, and brings them back', ()
 
   it('follows the newest link when a second one is opened while the sign-in screen is up', async () => {
     const { getPathname } = renderRouter(routes, { initialUrl: `/sign-in?next=${encodeURIComponent('/trips/1')}` });
-    await screen.findByRole('header', { name: 'Sign in' });
+    await screen.findByRole('header', { name: 'Enter your phone number' });
 
     act(() => router.navigate({ pathname: '/sign-in', params: { next: '/trips/9' } }));
     await act(signIn);
@@ -153,7 +153,7 @@ describe('signed out: the app sends people to sign-in, and brings them back', ()
     ['a script', 'javascript:alert(1)'],
   ])('ignores a return address that is %s and goes to the start instead', async (_, next) => {
     const { getPathname } = renderRouter(routes, { initialUrl: `/sign-in?next=${encodeURIComponent(next)}` });
-    await screen.findByRole('header', { name: 'Sign in' });
+    await screen.findByRole('header', { name: 'Enter your phone number' });
 
     await act(signIn);
 
@@ -173,7 +173,7 @@ describe('signed out: the app sends people to sign-in, and brings them back', ()
 
   it('does not give someone who is not signed in the account behind a link: the trip screen never renders', async () => {
     renderRouter(routes, { initialUrl: '/trips/7' });
-    await screen.findByRole('header', { name: 'Sign in' });
+    await screen.findByRole('header', { name: 'Enter your phone number' });
 
     expect(requests.filter((r) => r.path === '/me')).toHaveLength(0);
     expect(screen.queryByRole('header', { name: 'Trip 7' })).not.toBeOnTheScreen();
@@ -209,7 +209,7 @@ describe('signed in with an active account', () => {
 
   it("asks the start-up config with this build's identity before anything else", async () => {
     renderRouter(routes, { initialUrl: '/' });
-    await screen.findByRole('header', { name: 'Sign in' });
+    await screen.findByRole('header', { name: 'Enter your phone number' });
 
     expect(requests[0]).toMatchObject({ method: 'GET', path: '/app-config', authorization: null });
     expect(requests[0]?.query).toEqual({ app: 'rider', platform: 'ios', version: '0.1.0' });
@@ -280,7 +280,7 @@ describe('an account that may not use the app', () => {
 
     await user.press(await screen.findByRole('button', { name: 'Sign out' }));
 
-    expect(await screen.findByRole('header', { name: 'Sign in' })).toBeOnTheScreen();
+    expect(await screen.findByRole('header', { name: 'Enter your phone number' })).toBeOnTheScreen();
     expect(requests.some((r) => r.method === 'POST' && r.path === '/auth/logout')).toBe(true);
     expect(appApi.client.session.isSignedIn).toBe(false);
   });
@@ -345,7 +345,7 @@ describe('a build that is too old', () => {
     renderRouter(routes, { initialUrl: '/' });
 
     expect(await screen.findByRole('header', { name: 'Update required' })).toBeOnTheScreen();
-    expect(screen.queryByRole('header', { name: 'Sign in' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('header', { name: 'Enter your phone number' })).not.toBeOnTheScreen();
 
     await user.press(screen.getByRole('button', { name: 'Update the app' }));
 
@@ -400,7 +400,7 @@ describe('a build that is too old', () => {
     backend.config = configWith({ update: { force_update: false, update_available: true } });
     renderRouter(routes, { initialUrl: '/' });
 
-    expect(await screen.findByRole('header', { name: 'Sign in' })).toBeOnTheScreen();
+    expect(await screen.findByRole('header', { name: 'Enter your phone number' })).toBeOnTheScreen();
     expect(screen.queryByRole('header', { name: 'Update required' })).not.toBeOnTheScreen();
   });
 });
@@ -410,7 +410,7 @@ describe('when the server cannot be reached', () => {
     backend.config = { status: 500, body: { message: 'boom' } };
     renderRouter(routes, { initialUrl: '/' });
 
-    expect(await screen.findByRole('header', { name: 'Sign in' }, { timeout: 5000 })).toBeOnTheScreen();
+    expect(await screen.findByRole('header', { name: 'Enter your phone number' }, { timeout: 5000 })).toBeOnTheScreen();
     expect(screen.queryByRole('header', { name: 'Update required' })).not.toBeOnTheScreen();
     // It was asked twice (the client tries a failing start-up call once more) and then given up on.
     expect(requests.filter((r) => r.path === '/app-config')).toHaveLength(2);
@@ -440,7 +440,7 @@ describe('when the server cannot be reached', () => {
 
     await user.press(screen.getByRole('button', { name: 'Sign out' }));
 
-    expect(await screen.findByRole('header', { name: 'Sign in' })).toBeOnTheScreen();
+    expect(await screen.findByRole('header', { name: 'Enter your phone number' })).toBeOnTheScreen();
   });
 
   it('shows the loading state while the account is on its way, and neither the app nor an error', async () => {
@@ -538,7 +538,7 @@ describe('a link that leads nowhere', () => {
 
     await user.press(screen.getByRole('button', { name: 'Go to the start' }));
 
-    expect(await screen.findByRole('header', { name: 'Sign in' })).toBeOnTheScreen();
+    expect(await screen.findByRole('header', { name: 'Enter your phone number' })).toBeOnTheScreen();
     expect(getPathname()).toBe('/sign-in');
   });
 });
