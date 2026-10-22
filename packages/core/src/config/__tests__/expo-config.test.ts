@@ -7,7 +7,7 @@ const PRODUCTION = {
   REALTIME_URL: 'wss://realtime.taxikosmos.am',
   SENTRY_DSN: 'https://key@o1.ingest.sentry.io/2',
   STRIPE_PUBLISHABLE_KEY: 'pk_live_public',
-  GOOGLE_MAPS_ANDROID_API_KEY: 'AIza-maps',
+  MAP_TILE_URL: 'https://tiles.taxikosmos.am/{z}/{x}/{y}.png',
   EAS_PROJECT_ID: '00000000-0000-4000-8000-000000000001',
   EXPO_OWNER: 'taxikosmos',
   SENTRY_ORG: 'taxikosmos',
@@ -28,7 +28,7 @@ describe('buildExpoConfig', () => {
       scheme: 'taxirider',
       owner: 'taxikosmos',
       ios: { bundleIdentifier: 'com.taxikosmos.rider', supportsTablet: false },
-      android: { package: 'com.taxikosmos.rider', config: { googleMaps: { apiKey: 'AIza-maps' } } },
+      android: { package: 'com.taxikosmos.rider' },
       extra: { eas: { projectId: PRODUCTION.EAS_PROJECT_ID } },
     });
   });
@@ -65,6 +65,7 @@ describe('buildExpoConfig', () => {
       realtimeUrl: 'wss://realtime.taxikosmos.am',
       sentryDsn: PRODUCTION.SENTRY_DSN,
       stripePublishableKey: 'pk_live_public',
+      mapTileUrl: 'https://tiles.taxikosmos.am/{z}/{x}/{y}.png',
     });
   });
 
@@ -88,7 +89,13 @@ describe('buildExpoConfig', () => {
 
     expect(pluginNames(PRODUCTION)).toContain('@sentry/react-native/expo');
     expect(pluginNames({ ...PRODUCTION, SENTRY_PROJECT: undefined })).not.toContain('@sentry/react-native/expo');
-    expect(pluginNames({})).toEqual(['expo-router', 'expo-secure-store', 'expo-splash-screen']);
+    expect(pluginNames({})).toEqual([
+      'expo-router',
+      'expo-secure-store',
+      'expo-splash-screen',
+      '@maplibre/maplibre-react-native',
+      'expo-location',
+    ]);
   });
 
   it('installs the secure-store plugin: it keeps the session out of Android cloud backups', () => {
@@ -99,10 +106,21 @@ describe('buildExpoConfig', () => {
     expect(names).toContain('expo-secure-store');
   });
 
-  it('leaves out the maps key, EAS project id and owner when they are not set', () => {
+  it('sets up the map and foreground location, naming the app in the permission text and asking for no background location', () => {
+    const plugins = buildExpoConfig('driver', { ...PRODUCTION, SENTRY_PROJECT: undefined }).plugins ?? [];
+    const location = plugins.find((plugin) => Array.isArray(plugin) && plugin[0] === 'expo-location');
+
+    expect(plugins).toContain('@maplibre/maplibre-react-native');
+    expect(location).toEqual([
+      'expo-location',
+      { locationWhenInUsePermission: 'Allow TaxiKosmos Driver to use your location to find you on the map.' },
+    ]);
+    expect(JSON.stringify(location)).not.toMatch(/always|background/i);
+  });
+
+  it('leaves out the EAS project id and owner when they are not set', () => {
     const config = buildExpoConfig('rider', {});
 
-    expect(config.android).not.toHaveProperty('config');
     expect(config.extra).not.toHaveProperty('eas');
     expect(config).not.toHaveProperty('owner');
   });
@@ -123,6 +141,7 @@ describe('readPublicConfig', () => {
       realtimeUrl: null,
       sentryDsn: null,
       stripePublishableKey: null,
+      mapTileUrl: null,
     });
   });
 

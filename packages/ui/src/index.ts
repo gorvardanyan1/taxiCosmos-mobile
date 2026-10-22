@@ -37,4 +37,7 @@ export { Text } from './components/Text';
 export { TextField, type TextFieldProps } from './components/TextField';
 export { Toast, ToastProvider, useToast, type ToastProps, type ToastTone } from './components/Toast';
 
+export { MapView, type MapMarker, type MapViewProps, type MarkerKind } from './map/MapView';
+export { buildMapStyle, OSM_ATTRIBUTION, OSM_TILE_URL } from './map/style';
+
 export { DesignPreview } from './preview/DesignPreview';

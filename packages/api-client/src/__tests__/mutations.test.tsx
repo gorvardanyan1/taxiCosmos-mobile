@@ -19,6 +19,7 @@ import {
   useLogoutAll,
   useMe,
   useRegisterDevice,
+  useResolvePlace,
   useRequestOtp,
   useRequestPhoneChange,
   useSavedPlaces,
@@ -293,6 +294,36 @@ describe('every write sends the request the backend expects', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(fieldError(result.current.error, 'code')).toBe('The code is invalid or has expired.');
+  });
+});
+
+describe('resolving a chosen place', () => {
+  it('fetches the place with the search session and gives it back', async () => {
+    const { result, server } = await renderWithApi(() => useResolvePlace(), [replyWith(fixtures.geoPlace)]);
+
+    let place: unknown;
+    await act(async () => {
+      place = await result.current.mutateAsync({ placeId: 'osm:N1/2', session: 'search-1' });
+    });
+
+    expect(server.requests[0]).toMatchObject({
+      method: 'GET',
+      path: '/geo/places/osm%3AN1%2F2',
+      query: { session: 'search-1' },
+    });
+    expect(place).toEqual(fixtures.geoPlace.body.place);
+  });
+
+  it('works without a session, and reports a missing place as the tagged error', async () => {
+    const { result, server } = await renderWithApi(() => useResolvePlace(), [replyWith(fixtures.errorNotFound)]);
+
+    await act(async () => {
+      await result.current.mutateAsync({ placeId: 'gone' }).catch(() => undefined);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(server.requests[0]?.query).toEqual({});
+    expect(getApiError(result.current.error)?.kind).toBe('not_found');
   });
 });
 

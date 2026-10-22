@@ -14,7 +14,7 @@ describe('resolveEnvironment', () => {
       realtimeUrl: null,
       sentryDsn: null,
       stripePublishableKey: null,
-      googleMapsAndroidApiKey: null,
+      mapTileUrl: null,
     });
   });
 
@@ -148,7 +148,34 @@ describe('resolveEnvironment', () => {
     });
   });
 
-  it('passes the Android maps key through when set', () => {
-    expect(resolveEnvironment({ GOOGLE_MAPS_ANDROID_API_KEY: 'AIza-test' }).googleMapsAndroidApiKey).toBe('AIza-test');
+  describe('MAP_TILE_URL', () => {
+    it('is null when not set: the app then uses the public OpenStreetMap server', () => {
+      expect(resolveEnvironment({}).mapTileUrl).toBe(null);
+    });
+
+    it.each([
+      ['no placeholders', 'https://tiles.test/tile.png'],
+      ['only some placeholders', 'https://tiles.test/{z}/{x}.png'],
+      ['not a URL', 'tiles/{z}/{x}/{y}.png'],
+      ['credentials', 'https://user:pass@tiles.test/{z}/{x}/{y}.png'],
+      ['a fragment', 'https://tiles.test/{z}/{x}/{y}.png#x'],
+    ])('refuses a template with %s', (_, url) => {
+      expect(() => resolveEnvironment({ MAP_TILE_URL: url })).toThrow(ConfigError);
+    });
+
+    it('allows plain http in development only', () => {
+      const url = 'http://10.0.2.2:8080/{z}/{x}/{y}.png';
+
+      expect(resolveEnvironment({ MAP_TILE_URL: url }).mapTileUrl).toBe(url);
+      expect(() => resolveEnvironment({ APP_ENV: 'staging', API_URL: 'https://api.test', MAP_TILE_URL: url })).toThrow(
+        'MAP_TILE_URL must use https for a staging build.',
+      );
+    });
+  });
+
+  it('passes the map tile server through when set', () => {
+    expect(resolveEnvironment({ MAP_TILE_URL: 'https://tiles.test/{z}/{x}/{y}.png' }).mapTileUrl).toBe(
+      'https://tiles.test/{z}/{x}/{y}.png',
+    );
   });
 });

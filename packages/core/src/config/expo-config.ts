@@ -18,6 +18,8 @@ export interface PublicAppConfig {
   realtimeUrl: string | null;
   sentryDsn: string | null;
   stripePublishableKey: string | null;
+  /** Where the map tiles come from; `null` means OpenStreetMap's public server (development only). */
+  mapTileUrl: string | null;
 }
 
 /** App version shown in the stores. Native build numbers are managed by EAS (`appVersionSource: remote`). */
@@ -45,6 +47,7 @@ export function buildExpoConfig(app: AppName, env: EnvironmentVariables): ExpoCo
     ...(resolved.realtimeUrl ? { realtimeUrl: resolved.realtimeUrl } : {}),
     ...(resolved.sentryDsn ? { sentryDsn: resolved.sentryDsn } : {}),
     ...(resolved.stripePublishableKey ? { stripePublishableKey: resolved.stripePublishableKey } : {}),
+    ...(resolved.mapTileUrl ? { mapTileUrl: resolved.mapTileUrl } : {}),
   };
 
   const plugins: NonNullable<ExpoConfig['plugins']> = [
@@ -56,6 +59,16 @@ export function buildExpoConfig(app: AppName, env: EnvironmentVariables): ExpoCo
       { backgroundColor: SPLASH_BACKGROUND, image: './assets/images/splash-icon.png', imageWidth: 96 },
     ],
   ];
+
+  plugins.push(
+    // The map (MapLibre, OpenStreetMap tiles) needs no key; the plugin sets the native build flags it needs.
+    '@maplibre/maplibre-react-native',
+    // Foreground location only: the rider's pickup point and the driver's position while the app is open (no background location in the MVP).
+    [
+      'expo-location',
+      { locationWhenInUsePermission: `Allow ${identity.name} to use your location to find you on the map.` },
+    ],
+  );
 
   // Source maps are uploaded only when the build knows its Sentry project; the upload token is SENTRY_AUTH_TOKEN, read by the plugin.
   if (sentryOrg && sentryProject) {
@@ -88,9 +101,6 @@ export function buildExpoConfig(app: AppName, env: EnvironmentVariables): ExpoCo
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
-      ...(resolved.googleMapsAndroidApiKey
-        ? { config: { googleMaps: { apiKey: resolved.googleMapsAndroidApiKey } } }
-        : {}),
     },
     plugins,
     experiments: { typedRoutes: true, reactCompiler: true },
@@ -122,6 +132,7 @@ export function readPublicConfig(extra: unknown): PublicAppConfig {
     realtimeUrl: nonEmptyString(config.realtimeUrl),
     sentryDsn: nonEmptyString(config.sentryDsn),
     stripePublishableKey: nonEmptyString(config.stripePublishableKey),
+    mapTileUrl: nonEmptyString(config.mapTileUrl),
   };
 }
 

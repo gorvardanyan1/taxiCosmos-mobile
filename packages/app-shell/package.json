@@ -15,15 +15,19 @@
     "@taxikosmos/ui": "workspace:*"
   },
   "peerDependencies": {
+    "@maplibre/maplibre-react-native": "11.5.0",
+    "expo-location": "~57.0.22",
     "expo-router": "~57.0.29",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0"
   },
   "devDependencies": {
+    "@maplibre/maplibre-react-native": "11.5.0",
     "@types/node": "24.19.2",
     "@types/react": "~19.2.2",
     "expo": "~57.0.31",
+    "expo-location": "~57.0.22",
     "expo-router": "~57.0.29",
     "nativewind": "4.2.7",
     "react": "19.2.3",

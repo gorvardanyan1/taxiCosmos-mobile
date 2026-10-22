@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./tailwind-preset": "./tailwind-preset.js",
     "./jest/css-stub": "./jest/css-stub.js",
-    "./jest/setup": "./jest/setup.js"
+    "./jest/setup": "./jest/setup.js",
+    "./jest/maplibre": "./jest/maplibre.js"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -25,6 +26,7 @@
     "react-native-css-interop": "0.2.7"
   },
   "peerDependencies": {
+    "@maplibre/maplibre-react-native": "11.5.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo-font": "~57.0.4",
     "expo-localization": "~57.0.2",
@@ -35,6 +37,7 @@
     "react-native-svg": "15.15.4"
   },
   "devDependencies": {
+    "@maplibre/maplibre-react-native": "11.5.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native/jest-preset": "0.86.3",
     "@react-native/metro-config": "0.86.3",

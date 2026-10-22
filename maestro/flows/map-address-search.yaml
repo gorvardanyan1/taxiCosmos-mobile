@@ -1,0 +1,35 @@
+# Both apps, development build: the map stays usable when location is refused, and an address can be typed and picked.
+# Needs the backend's /geo/* answering for "Abovyan" (MAPS_PROVIDER=fake, or osm with internet) and the test phone of auth-otp-sign-in.
+# Run with -e APP_ID=<bundle id> (see maestro/scripts/run.sh); the device language must be English.
+appId: ${APP_ID}
+name: With location refused, the person still finds an address on the map
+tags:
+  - smoke
+---
+- runFlow: auth-otp-sign-in.yaml
+# Reopen the signed-in app with location switched off for it.
+- launchApp:
+    permissions:
+      location: deny
+- extendedWaitUntil:
+    visible: 'Environment: development'
+    timeout: 20000
+- tapOn: 'Map'
+- extendedWaitUntil:
+    visible: 'Search for an address'
+    timeout: 15000
+# The reason for asking, or (when the system already refused) the way on without location: never an empty screen.
+- extendedWaitUntil:
+    visible: 'Location is off|Find you on the map'
+    timeout: 15000
+- tapOn: 'Search for an address'
+- inputText: 'Abovyan'
+- extendedWaitUntil:
+    visible: '(?i)abovyan street.*'
+    timeout: 20000
+- tapOn:
+    text: '(?i)abovyan street.*'
+    index: 0
+- extendedWaitUntil:
+    visible: 'Selected: .*'
+    timeout: 20000

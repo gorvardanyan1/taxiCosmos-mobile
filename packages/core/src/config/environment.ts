@@ -21,8 +21,8 @@ export interface ResolvedEnvironment {
   realtimeUrl: string | null;
   sentryDsn: string | null;
   stripePublishableKey: string | null;
-  /** Android Google Maps key, written into the native manifest at build time (used from M3-T1). */
-  googleMapsAndroidApiKey: string | null;
+  /** Where the map tiles come from (`https://tiles.example.com/{z}/{x}/{y}.png`), or `null` for OpenStreetMap's public server, which is for development only. */
+  mapTileUrl: string | null;
 }
 
 export type EnvironmentVariables = Readonly<Record<string, string | undefined>>;
@@ -43,7 +43,7 @@ export function resolveEnvironment(env: EnvironmentVariables): ResolvedEnvironme
     realtimeUrl: parseRealtimeUrl(value(env, 'REALTIME_URL'), environment),
     sentryDsn: parseSentryDsn(value(env, 'SENTRY_DSN'), environment),
     stripePublishableKey: parseStripeKey(value(env, 'STRIPE_PUBLISHABLE_KEY'), environment),
-    googleMapsAndroidApiKey: value(env, 'GOOGLE_MAPS_ANDROID_API_KEY'),
+    mapTileUrl: parseMapTileUrl(value(env, 'MAP_TILE_URL'), environment),
   };
 }
 
@@ -108,6 +108,29 @@ function parseRealtimeUrl(raw: string | null, environment: AppEnvironment): stri
   }
 
   return url.toString().replace(/\/+$/, '');
+}
+
+function parseMapTileUrl(raw: string | null, environment: AppEnvironment): string | null {
+  if (raw === null) {
+    return null;
+  }
+
+  // The `{z}/{x}/{y}` placeholders are not valid in a host, so check the shape by hand and the origin with `URL` on a filled-in copy.
+  if (!raw.includes('{z}') || !raw.includes('{x}') || !raw.includes('{y}')) {
+    throw new ConfigError('MAP_TILE_URL must contain the {z}, {x} and {y} placeholders.');
+  }
+
+  const url = parseUrl(raw.replace('{z}', '0').replace('{x}', '0').replace('{y}', '0'), 'MAP_TILE_URL');
+
+  if (url.protocol !== 'https:' && environment !== 'development') {
+    throw new ConfigError(`MAP_TILE_URL must use https for a ${environment} build.`);
+  }
+
+  if (url.username || url.password || url.hash) {
+    throw new ConfigError('MAP_TILE_URL must not carry credentials or a fragment.');
+  }
+
+  return raw;
 }
 
 function parseSentryDsn(raw: string | null, environment: AppEnvironment): string | null {
