@@ -1,7 +1,7 @@
 import { useUpdateMe } from '@taxikosmos/api-client';
 import { getApiError, fieldError, validName } from '@taxikosmos/core';
 import { Button, Text, TextField, useUiTranslation } from '@taxikosmos/ui';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,14 +14,22 @@ export function NameScreen() {
   const [problem, setProblem] = useState<string | null>(null);
   const [saveFailure, setSaveFailure] = useState<string | null>(null);
 
+  // The keyboard's "done" key reaches `save` without the button's own lock; a ref (not state) also holds for two presses in the same instant.
+  const saving = useRef(false);
+
   const save = async () => {
     const valid = validName(name);
+
+    if (saving.current) {
+      return;
+    }
 
     if (valid === null) {
       setProblem(name.trim() === '' ? t('name.required') : t('name.tooLong'));
       return;
     }
 
+    saving.current = true;
     setProblem(null);
     setSaveFailure(null);
 
@@ -36,6 +44,8 @@ export function NameScreen() {
       } else {
         setSaveFailure(api?.kind === 'network' || api?.kind === 'timeout' ? t('name.offline') : t('name.failed'));
       }
+    } finally {
+      saving.current = false;
     }
   };
 

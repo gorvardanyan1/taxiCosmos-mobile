@@ -150,6 +150,22 @@ describe('the phone number step', () => {
     expect(calls('/auth/otp/request')).toHaveLength(1);
   });
 
+  it("sends one request when the keyboard's done key is pressed twice in the same instant", async () => {
+    const user = userEvent.setup();
+    let answer: (() => void) | undefined;
+    backend.otpRequest = () => new Promise((resolve) => (answer = () => resolve(ok(fixtures.authOtpRequested))));
+    renderRouter('./src/app', { initialUrl: '/' });
+    await user.type(await screen.findByLabelText('Phone number'), NATIONAL);
+
+    await act(async () => {
+      fireEvent(phoneField(), 'submitEditing');
+      fireEvent(phoneField(), 'submitEditing');
+    });
+    await act(async () => answer?.());
+
+    expect(calls('/auth/otp/request')).toHaveLength(1);
+  });
+
   it('takes the number back when the person changes it, ready to edit', async () => {
     const user = userEvent.setup();
     renderRouter('./src/app', { initialUrl: '/' });

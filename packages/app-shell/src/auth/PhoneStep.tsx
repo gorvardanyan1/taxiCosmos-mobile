@@ -1,6 +1,6 @@
 import { formatPhoneInput, secondsUntil, type AppClient, type CountryCode } from '@taxikosmos/core';
 import { Button, PhoneField, Text, useUiTranslation, type PhoneFieldChange } from '@taxikosmos/ui';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { useNow } from '../useNow';
@@ -36,13 +36,19 @@ export function PhoneStep({ app, entry, onEntryChange, cooldown, onSent, onCoold
     onEntryChange({ text: next.text, country: next.country });
   };
 
+  // The keyboard's "done" key reaches `send` without the button's own lock; a ref (not state) also holds for two presses in the same instant.
+  const sending = useRef(false);
+
   const send = async () => {
-    if (phone === null || waiting > 0) {
+    if (phone === null || waiting > 0 || sending.current) {
       return;
     }
 
+    sending.current = true;
     setProblem(null);
-    const result = await requestCode(phone);
+    const result = await requestCode(phone).finally(() => {
+      sending.current = false;
+    });
 
     if (result.ok) {
       onSent({ phone, expiresIn: result.expiresIn, resendInSeconds: result.resendInSeconds });

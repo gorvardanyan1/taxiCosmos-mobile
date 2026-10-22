@@ -150,6 +150,22 @@ describe('the phone number step', () => {
     expect(calls('/auth/otp/request')).toHaveLength(1);
   });
 
+  it("sends one request when the keyboard's done key is pressed twice in the same instant", async () => {
+    const user = userEvent.setup();
+    let answer: (() => void) | undefined;
+    backend.otpRequest = () => new Promise((resolve) => (answer = () => resolve(ok(fixtures.authOtpRequested))));
+    renderRouter('./src/app', { initialUrl: '/' });
+    await user.type(await screen.findByLabelText('Phone number'), NATIONAL);
+
+    await act(async () => {
+      fireEvent(phoneField(), 'submitEditing');
+      fireEvent(phoneField(), 'submitEditing');
+    });
+    await act(async () => answer?.());
+
+    expect(calls('/auth/otp/request')).toHaveLength(1);
+  });
+
   it('takes the number back when the person changes it, ready to edit', async () => {
     const user = userEvent.setup();
     renderRouter('./src/app', { initialUrl: '/' });
@@ -629,6 +645,25 @@ describe('a new rider is asked for a name', () => {
       authorization: 'Bearer 1|fixture-access-token',
     });
     expect(calls('/me').find((request) => request.method === 'PATCH')?.idempotencyKey).toEqual(expect.any(String));
+  });
+
+  it("saves the name once when the keyboard's done key is pressed twice in the same instant", async () => {
+    const user = userEvent.setup();
+    let answer: (() => void) | undefined;
+    backend.otpVerify = sessionFor(null);
+    backend.updateMe = () => new Promise((resolve) => (answer = () => resolve(ok(fixtures.meRiderUpdated))));
+    renderRouter('./src/app', { initialUrl: '/' });
+    await askForCode(user);
+    await enterCode(CODE);
+    await user.type(await screen.findByLabelText('Your name'), 'Anna');
+
+    await act(async () => {
+      fireEvent(screen.getByLabelText('Your name'), 'submitEditing');
+      fireEvent(screen.getByLabelText('Your name'), 'submitEditing');
+    });
+    await act(async () => answer?.());
+
+    expect(calls('/me').filter((request) => request.method === 'PATCH')).toHaveLength(1);
   });
 
   it('asks again on the next start until it is answered, and not once it is', async () => {
