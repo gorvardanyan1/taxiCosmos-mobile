@@ -8,6 +8,7 @@ const config = (overrides: Partial<PublicAppConfig>): PublicAppConfig => ({
   realtimeUrl: null,
   sentryDsn: null,
   stripePublishableKey: null,
+  mapTileUrl: null,
   ...overrides,
 });
 

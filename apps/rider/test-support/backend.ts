@@ -22,6 +22,12 @@ export interface Backend {
   otpVerify: Script;
   /** `PATCH /me` */
   updateMe: Script;
+  /** `GET /geo/autocomplete` */
+  autocomplete: Script;
+  /** `GET /geo/places/{id}` */
+  place: Script;
+  /** `GET /geo/reverse` */
+  reverse: Script;
 }
 
 export interface RecordedRequest {
@@ -84,6 +90,9 @@ export function installBackend(): { backend: Backend; requests: RecordedRequest[
     otpRequest: ok(fixtures.authOtpRequested),
     otpVerify: ok(fixtures.authSessionRider),
     updateMe: ok(fixtures.meRiderUpdated),
+    autocomplete: ok(fixtures.geoAutocomplete),
+    place: ok(fixtures.geoPlace),
+    reverse: ok(fixtures.geoReverse),
   };
   const requests: RecordedRequest[] = [];
 
@@ -106,11 +115,17 @@ export function installBackend(): { backend: Backend; requests: RecordedRequest[
           ? backend.otpRequest
           : path === '/auth/otp/verify'
             ? backend.otpVerify
-            : path === '/me'
-              ? method === 'PATCH'
-                ? backend.updateMe
-                : backend.me
-              : backend.logout;
+            : path === '/geo/autocomplete'
+              ? backend.autocomplete
+              : path.startsWith('/geo/places/')
+                ? backend.place
+                : path === '/geo/reverse'
+                  ? backend.reverse
+                  : path === '/me'
+                    ? method === 'PATCH'
+                      ? backend.updateMe
+                      : backend.me
+                    : backend.logout;
     const reply = typeof script === 'function' ? await script() : script;
 
     if (reply === 'network-error') {

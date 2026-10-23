@@ -10,4 +10,24 @@ beforeEach(async () => {
   require('nativewind').colorScheme.set('system');
 });
 
+jest.mock('@maplibre/maplibre-react-native', () => require('./maplibre'));
 jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
+
+// The phone's location is the outside world too: not asked yet, no position, until a test says otherwise.
+jest.mock('expo-location', () => ({
+  PermissionStatus: { GRANTED: 'granted', DENIED: 'denied', UNDETERMINED: 'undetermined' },
+  Accuracy: { Balanced: 3 },
+  getForegroundPermissionsAsync: jest.fn(),
+  requestForegroundPermissionsAsync: jest.fn(),
+  getCurrentPositionAsync: jest.fn(),
+}));
+beforeEach(() => {
+  const location = require('expo-location');
+  location.getForegroundPermissionsAsync
+    .mockReset()
+    .mockResolvedValue({ status: 'undetermined', canAskAgain: true, granted: false });
+  location.requestForegroundPermissionsAsync
+    .mockReset()
+    .mockResolvedValue({ status: 'denied', canAskAgain: true, granted: false });
+  location.getCurrentPositionAsync.mockReset().mockRejectedValue(new Error('No position'));
+});

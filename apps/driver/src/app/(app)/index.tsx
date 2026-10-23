@@ -22,7 +22,15 @@ export default function Home() {
         {t('shell.homeApi', { value: appConfig.apiUrl })}
       </Text>
       {appConfig.environment !== 'production' ? (
-        <Button className="mt-4" size="sm" label={t('preview.title')} onPress={() => router.push('/design-preview')} />
+        <>
+          <Button
+            className="mt-4"
+            size="sm"
+            label={t('preview.title')}
+            onPress={() => router.push('/design-preview')}
+          />
+          <Button size="sm" label={t('location.previewTitle')} onPress={() => router.push('/map-preview')} />
+        </>
       ) : null}
     </View>
   );

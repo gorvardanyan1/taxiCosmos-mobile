@@ -12,6 +12,7 @@ src/app/
   (auth)/            the signed-out screens. _layout.tsx sends anyone signed in on to `next` (or the start)
     sign-in.tsx      phone number, then the code (`SignInScreen`); hands the install id from `appApi.getDeviceId`
   design-preview.tsx development/staging tool, outside both groups
+  map-preview.tsx    development/staging tool: map, location permission, address search (docs/maps.md)
   +not-found.tsx     a link that leads nowhere: a plain page with a way back
 ```
 

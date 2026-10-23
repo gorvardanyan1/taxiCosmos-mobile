@@ -195,6 +195,21 @@ export function useDeleteSavedPlace() {
   });
 }
 
+// ---- geo ----
+
+/**
+ * The coordinates and address of the suggestion the person tapped. A read, asked for when they choose, so it is a mutation (no cache, no
+ * refetch). Pass the search's `session` so the provider bills the typing and the choice as one search.
+ */
+export function useResolvePlace() {
+  const api = useApi();
+
+  return useMutation({
+    mutationFn: ({ placeId, session }: { placeId: string; session?: string | undefined }) =>
+      api.geo.place(placeId, session),
+  });
+}
+
 // ---- fares ----
 
 export function useFareEstimate() {
