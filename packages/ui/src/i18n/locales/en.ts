@@ -200,7 +200,6 @@ export const en = {
     findingYou: 'Finding your location',
     setPickup: 'Set your pickup',
     change: 'Change',
-    pickOnMap: 'Pick on the map',
     searchPickup: 'Search for a pickup',
     searchDropoff: 'Where to?',
     pickPickupTitle: 'Move the map to set your pickup',

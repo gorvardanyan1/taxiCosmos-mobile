@@ -204,7 +204,6 @@ export const ru = {
     findingYou: 'Определяем ваше местоположение',
     setPickup: 'Укажите место посадки',
     change: 'Изменить',
-    pickOnMap: 'Выбрать на карте',
     searchPickup: 'Найти место посадки',
     searchDropoff: 'Куда едем?',
     pickPickupTitle: 'Двигайте карту, чтобы указать место посадки',

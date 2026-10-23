@@ -12,8 +12,8 @@ import {
 } from '@taxikosmos/core';
 import { Button, Card, Icon, IconButton, MapView, Text, useUiTranslation, type MapMarker } from '@taxikosmos/ui';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Linking, Pressable, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { BackHandler, Linking, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { appConfig } from '../config';
@@ -66,6 +66,21 @@ export function HomeScreen() {
       setPin(location.position);
     }
   }
+
+  // The phone's Back button closes the picker instead of leaving the app.
+  useEffect(() => {
+    if (mode === 'overview') {
+      return undefined;
+    }
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setMode('overview');
+
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [mode]);
 
   const overview = overviewFocus(pickup, dropoff, location.position);
   const center = mode === 'overview' ? overview.center : pickCenter;

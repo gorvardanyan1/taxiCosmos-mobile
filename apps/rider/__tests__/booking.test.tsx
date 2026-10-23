@@ -5,7 +5,7 @@ import { decodePolyline, DEFAULT_MAP_CENTER, midpoint, zoomToFit } from '@taxiko
 import * as fixtures from '@taxikosmos/core/fixtures';
 import * as Location from 'expo-location';
 import { renderRouter, screen } from 'expo-router/testing-library';
-import { Linking } from 'react-native';
+import { BackHandler, Linking } from 'react-native';
 
 import {
   errorReply,
@@ -96,7 +96,6 @@ afterEach(async () => {
 });
 
 const GRANTED = { status: 'granted', canAskAgain: true, granted: true } as Location.LocationPermissionResponse;
-const DENIED = { status: 'denied', canAskAgain: true, granted: false } as Location.LocationPermissionResponse;
 const HERE = { coords: { latitude: 40.1811, longitude: 44.5136 } } as Location.LocationObject;
 // The recorded answers: the reverse lookup of any spot, and the place a chosen suggestion resolves to.
 const HERE_ADDRESS = 'Fake street, near 40.18, 44.51';
@@ -199,7 +198,7 @@ describe('the pickup', () => {
     expect(screen.queryByRole('header', { name: 'Find you on the map' })).not.toBeOnTheScreen();
   });
 
-  it('is refused politely when location is blocked: Settings, and an address still works', async () => {
+  it('offers Settings when location is blocked, and a pickup can still be set by hand', async () => {
     const user = userEvent.setup();
     permissions.get.mockResolvedValue({
       status: 'denied',
@@ -211,7 +210,9 @@ describe('the pickup', () => {
     await user.press(await screen.findByRole('button', { name: 'Open settings' }));
 
     expect(Linking.openSettings).toHaveBeenCalledTimes(1);
-    expect(DENIED.status).toBe('denied');
+    // Settings is the only way to turn it on, but the rider can still set a pickup without it.
+    expect(screen.getByRole('button', { name: 'Set your pickup' })).toBeOnTheScreen();
+    expect(continueButton('Set your pickup to continue')).toBeDisabled();
   });
 
   it('can be moved by dragging the map under the pin, and the rider confirms the spot', async () => {
@@ -314,6 +315,33 @@ describe('the drop-off', () => {
       pickup: { lat: 40.1811, lng: 44.5136 },
       dropoff: { lat: 40.2, lng: 44.55 },
     });
+  });
+
+  it("goes back to the overview with the phone's own Back button, and leaves it to the phone from the overview", async () => {
+    const user = userEvent.setup();
+    const handlers: Parameters<typeof BackHandler.addEventListener>[1][] = [];
+    jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_, handler) => {
+      handlers.push(handler);
+
+      return { remove: () => void handlers.splice(handlers.indexOf(handler), 1) };
+    });
+    await openHome();
+    // The router has listeners of its own; the picker adds one on top while it is open.
+    const others = handlers.length;
+    await user.press(await dropoffRow());
+    await screen.findByRole('header', { name: 'Move the map to set your drop-off' });
+    expect(handlers).toHaveLength(others + 1);
+
+    let handled: boolean | null | undefined;
+    act(() => {
+      handled = handlers[handlers.length - 1]?.({} as never);
+    });
+
+    expect(handled).toBe(true);
+    expect(await dropoffRow()).toHaveAccessibleName('Drop-off: Where to?');
+    expect(screen.queryByRole('header', { name: 'Move the map to set your drop-off' })).not.toBeOnTheScreen();
+    // From the overview the picker's listener is gone: the phone's default (leaving the app) applies.
+    expect(handlers).toHaveLength(others);
   });
 
   it('can be left unchanged with Back', async () => {
@@ -459,7 +487,9 @@ describe('going on', () => {
       await openHome();
       await screen.findByText(HERE_ADDRESS);
       await chooseDropoff(user);
-      expect((await screen.findAllByText(message, undefined, { timeout: 15000 })).length).toBeGreaterThan(0);
+      // The message is said twice: by the notice under the route (an alert) and by the disabled button.
+      await waitFor(() => expect(screen.getAllByText(message)).toHaveLength(2), { timeout: 15000 });
+      expect(screen.getByRole('alert')).toHaveTextContent(message);
       expect(screen.getByRole('button', { name: message })).toBeDisabled();
 
       backend.fareEstimate = freshQuote();

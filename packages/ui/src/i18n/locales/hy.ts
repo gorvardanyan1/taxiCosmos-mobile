@@ -202,7 +202,6 @@ export const hy = {
     findingYou: 'Որոշում ենք ձեր գտնվելու վայրը',
     setPickup: 'Նշեք նստեցման կետը',
     change: 'Փոխել',
-    pickOnMap: 'Ընտրել քարտեզից',
     searchPickup: 'Փնտրել նստեցման կետ',
     searchDropoff: 'Ո՞ւր գնանք',
     pickPickupTitle: 'Շարժեք քարտեզը՝ նստեցման կետը նշելու համար',
