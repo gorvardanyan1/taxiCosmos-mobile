@@ -565,20 +565,20 @@ describe('availability', () => {
     renderRouter('./src/app', { initialUrl: '/' });
 
     await user.press(await screen.findByRole('button', { name: 'Map' }));
-
+    expect(await screen.findByLabelText('Search for an address')).toBeOnTheScreen();
     expect(await screen.findByTestId('Map')).toBeOnTheScreen();
   });
 
   it('is not reachable in a production build: no button, and its address leads home', async () => {
     config.environment = 'production';
     renderRouter('./src/app', { initialUrl: '/' });
-    expect(await screen.findByRole('header', { name: 'TaxiKosmos (Dev)' })).toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: 'Drop-off: Where to?' })).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Map' })).not.toBeOnTheScreen();
 
     screen.unmount();
     renderRouter('./src/app', { initialUrl: '/map-preview' });
 
-    expect(await screen.findByRole('header', { name: 'TaxiKosmos (Dev)' })).toBeOnTheScreen();
-    expect(screen.queryByTestId('Map')).not.toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: 'Drop-off: Where to?' })).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Search for an address')).not.toBeOnTheScreen();
   });
 });

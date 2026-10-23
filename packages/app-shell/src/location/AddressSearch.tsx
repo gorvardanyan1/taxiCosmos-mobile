@@ -9,10 +9,13 @@ export interface AddressSearchProps {
   near: LatLng | null;
   /** The person chose a suggestion. */
   onSelect: (point: AddressPoint) => void;
+  /** What the box is called and says while empty; "Search for an address" / "Where to?" by default. */
+  label?: string;
+  placeholder?: string;
 }
 
 /** The address box: suggestions after a short pause in typing, a message for every way the search can fail, and the chosen place as `{lat, lng, address}`. */
-export function AddressSearch({ near, onSelect }: AddressSearchProps) {
+export function AddressSearch({ near, onSelect, label, placeholder }: AddressSearchProps) {
   const { t } = useUiTranslation();
   const search = useAddressSearch(near);
 
@@ -21,8 +24,8 @@ export function AddressSearch({ near, onSelect }: AddressSearchProps) {
       <View className="flex-row items-end gap-2">
         <TextField
           className="flex-1"
-          label={t('location.searchLabel')}
-          placeholder={t('location.searchPlaceholder')}
+          label={label ?? t('location.searchLabel')}
+          placeholder={placeholder ?? t('location.searchPlaceholder')}
           value={search.text}
           onChangeText={search.change}
           autoCorrect={false}

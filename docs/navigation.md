@@ -8,7 +8,8 @@ Both apps share one shell, `packages/app-shell`, so the rider and the driver app
 src/app/
   _layout.tsx        root: ApiProvider > UiProvider > <AppShell> > Stack; starts Sentry (scrubbed) and holds the splash screen
   (app)/             the signed-in app. _layout.tsx sends anyone signed out to /sign-in?next=<where they were going>
-    index.tsx        placeholder home (the real screens arrive with M2+)
+    index.tsx        rider: the home (map, pickup, where to; booking/HomeScreen); driver: placeholder until M6
+    ride-options.tsx rider: where the home hands over (M4-T2 builds it); without a chosen route it goes back to the start
   (auth)/            the signed-out screens. _layout.tsx sends anyone signed in on to `next` (or the start)
     sign-in.tsx      phone number, then the code (`SignInScreen`); hands the install id from `appApi.getDeviceId`
   design-preview.tsx development/staging tool, outside both groups
@@ -47,6 +48,17 @@ A link such as `taxirider://trips/42` opens its screen from a cold start. If nob
 `/sign-in?next=%2Ftrips%2F42`; once signed in, `(auth)/_layout` follows `next`. `next` comes from a link anyone can craft, so
 `safeNextPath` (core) accepts only a path inside the app: no other scheme, no `//host`, no backslashes or control characters, no
 sign-in screens, at most 300 characters. Universal (https) links are not part of the MVP.
+
+## The rider home (M4-T1, `apps/rider/src/booking`)
+
+A map with a pickup, a drop-off and a Continue button. The pickup is the phone's position (reverse-geocoded) until the rider changes it; both ends
+are chosen by searching an address or by moving the map under a fixed pin (`Change` / `Where to?` open the picker; confirm takes the address the
+maps give for the pin). Saved places and recent destinations are not in the MVP.
+
+With both ends set the route is priced (`POST /trips/fare-estimate`): that answer is also the check that the pickup is in a service zone
+(`422 outside_service_area` shows "Not available here" on the home screen, before the ride options). Only the latest route counts. **Continue** says
+on the disabled button what is missing (`booking/continueState`): pickup, drop-off, same place, checking prices, not served, no prices, offline.
+It opens `/ride-options` with the chosen route and quote in `TripDraft`, asking for a new price first when the one in hand has expired.
 
 ## Signing in (`SignInScreen`, `NameScreen`)
 

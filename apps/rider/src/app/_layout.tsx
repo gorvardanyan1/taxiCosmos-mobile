@@ -10,6 +10,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { appApi } from '../api';
+import { TripDraftProvider } from '../booking/TripDraft';
 import { appConfig } from '../config';
 
 // Personal data is removed from every report before it leaves the phone (see `scrubEvent` in @taxikosmos/core).
@@ -28,7 +29,9 @@ function RootLayout() {
     <ApiProvider client={appApi.client} realtime={appApi.realtime}>
       <UiProvider onReady={() => void SplashScreen.hideAsync()}>
         <AppShell app={appConfig.app} version={Constants.expoConfig?.version} onError={reportError}>
-          <Stack screenOptions={{ headerShown: false }} />
+          <TripDraftProvider>
+            <Stack screenOptions={{ headerShown: false }} />
+          </TripDraftProvider>
         </AppShell>
       </UiProvider>
     </ApiProvider>

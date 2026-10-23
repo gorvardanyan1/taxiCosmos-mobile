@@ -26,13 +26,13 @@ tags:
 - extendedWaitUntil:
     visible: 'That code is not right. Check it and try again.'
     timeout: 15000
-- assertNotVisible: 'Environment: development'
+- assertNotVisible: 'Environment: development|Where to\?'
 # The right code signs in.
 - tapOn: 'Verification code'
 - inputText: '123456'
 # A first-time rider is asked for a name once; a driver goes straight in.
 - extendedWaitUntil:
-    visible: 'Environment: development|What should we call you?'
+    visible: 'Environment: development|Where to\?|What should we call you?'
     timeout: 20000
 - runFlow:
     when:
@@ -42,14 +42,14 @@ tags:
       - inputText: 'Maestro Rider'
       - tapOn: 'Continue'
 - extendedWaitUntil:
-    visible: 'Environment: development'
+    visible: 'Environment: development|Where to\?'
     timeout: 20000
 - assertNotVisible: 'Enter your phone number'
 # Closing the app and opening it again keeps the person signed in: no sign-in, no name question.
 - stopApp
 - launchApp
 - extendedWaitUntil:
-    visible: 'Environment: development'
+    visible: 'Environment: development|Where to\?'
     timeout: 20000
 - assertNotVisible: 'Enter your phone number'
 - assertNotVisible: 'What should we call you?'

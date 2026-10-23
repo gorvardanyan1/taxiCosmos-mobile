@@ -28,6 +28,10 @@ export interface Backend {
   place: Script;
   /** `GET /geo/reverse` */
   reverse: Script;
+  /** `GET /geo/route` */
+  route: Script;
+  /** `POST /trips/fare-estimate` */
+  fareEstimate: Script;
 }
 
 export interface RecordedRequest {
@@ -93,6 +97,8 @@ export function installBackend(): { backend: Backend; requests: RecordedRequest[
     autocomplete: ok(fixtures.geoAutocomplete),
     place: ok(fixtures.geoPlace),
     reverse: ok(fixtures.geoReverse),
+    route: ok(fixtures.geoRoute),
+    fareEstimate: ok(fixtures.fareEstimate),
   };
   const requests: RecordedRequest[] = [];
 
@@ -121,11 +127,15 @@ export function installBackend(): { backend: Backend; requests: RecordedRequest[
                 ? backend.place
                 : path === '/geo/reverse'
                   ? backend.reverse
-                  : path === '/me'
-                    ? method === 'PATCH'
-                      ? backend.updateMe
-                      : backend.me
-                    : backend.logout;
+                  : path === '/geo/route'
+                    ? backend.route
+                    : path === '/trips/fare-estimate'
+                      ? backend.fareEstimate
+                      : path === '/me'
+                        ? method === 'PATCH'
+                          ? backend.updateMe
+                          : backend.me
+                        : backend.logout;
     const reply = typeof script === 'function' ? await script() : script;
 
     if (reply === 'network-error') {

@@ -92,7 +92,7 @@ describe('rider design preview', () => {
     await signIn();
     renderRouter('./src/app', { initialUrl: '/' });
 
-    expect(await screen.findByRole('header', { name: 'TaxiKosmos (Dev)' })).toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: 'Drop-off: Where to?' })).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Design system' })).not.toBeOnTheScreen();
   });
 
@@ -101,7 +101,7 @@ describe('rider design preview', () => {
     await signIn();
     const { getPathname } = renderRouter('./src/app', { initialUrl: '/design-preview' });
 
-    expect(await screen.findByRole('header', { name: 'TaxiKosmos (Dev)' })).toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: 'Drop-off: Where to?' })).toBeOnTheScreen();
     expect(screen.queryByRole('header', { name: 'Buttons' })).not.toBeOnTheScreen();
     expect(getPathname()).toBe('/');
   });

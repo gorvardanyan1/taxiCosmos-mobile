@@ -63,6 +63,7 @@ use visible text or accessibility labels rather than coordinates, `clearState: t
 flows (`smoke`, `auth`, `money`, `matching`). Flows that touch auth, money or matching are mandatory for the task that
 adds them (see `rn-rider-driver-app-tasks.md`). For sign-in flows use the backend's `OTP_TEST_CODE` / `OTP_TEST_PHONES`
 (only honoured in local, testing and e2e environments) and never a real phone number.
+A flow that belongs to one app carries the tag `rider-only` or `driver-only`; `maestro/scripts/run.sh` leaves it out of the other app's run.
 
 ### Install Maestro (Linux or macOS)
 

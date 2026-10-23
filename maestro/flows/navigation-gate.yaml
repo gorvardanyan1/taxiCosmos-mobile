@@ -18,7 +18,7 @@ tags:
 - extendedWaitUntil:
     visible: 'Enter your phone number'
     timeout: 10000
-- assertNotVisible: 'Environment: development'
+- assertNotVisible: 'Environment: development|Where to\?'
 # A link that matches nothing.
 - openLink: ${SCHEME}://no/such/screen
 - extendedWaitUntil:

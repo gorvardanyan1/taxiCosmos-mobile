@@ -12,7 +12,7 @@ tags:
     permissions:
       location: deny
 - extendedWaitUntil:
-    visible: 'Environment: development'
+    visible: 'Environment: development|Where to\?'
     timeout: 20000
 - tapOn: 'Map'
 - extendedWaitUntil:
