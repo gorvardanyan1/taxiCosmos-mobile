@@ -78,7 +78,7 @@ const WRONG = '654321';
 const calls = (path: string) => requests.filter((request) => request.path === path);
 const phoneField = (label = 'Phone number') => screen.getByLabelText(label);
 const codeField = (label = 'Verification code') => screen.getByLabelText(label);
-const homeHeader = () => screen.findByRole('header', { name: 'TaxiKosmos (Dev)' });
+const homeHeader = () => screen.findByRole('button', { name: 'Drop-off: Where to?' });
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -633,7 +633,7 @@ describe('a new rider is asked for a name', () => {
     await enterCode(CODE);
 
     expect(await screen.findByRole('header', { name: 'What should we call you?' })).toBeOnTheScreen();
-    expect(screen.queryByRole('header', { name: 'TaxiKosmos (Dev)' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Drop-off: Where to?' })).not.toBeOnTheScreen();
 
     await user.type(screen.getByLabelText('Your name'), '  Anna ');
     await user.press(screen.getByRole('button', { name: 'Continue' }));

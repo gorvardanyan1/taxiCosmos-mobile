@@ -98,14 +98,14 @@ const routes = {
   '+not-found': NotFound,
 };
 
-const homeHeader = () => screen.findByRole('header', { name: 'TaxiKosmos (Dev)' });
+const homeHeader = () => screen.findByRole('button', { name: 'Drop-off: Where to?' });
 
 describe('signed out: the app sends people to sign-in, and brings them back', () => {
   it('shows the sign-in screen on a fresh install, remembering the start screen as where to go next', async () => {
     const { getPathname, getSearchParams } = renderRouter(routes, { initialUrl: '/' });
 
     expect(await screen.findByRole('header', { name: 'Enter your phone number' })).toBeOnTheScreen();
-    expect(screen.queryByRole('header', { name: 'TaxiKosmos (Dev)' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Drop-off: Where to?' })).not.toBeOnTheScreen();
     expect(getPathname()).toBe('/sign-in');
     expect(getSearchParams()).toEqual({ next: '/' });
   });
@@ -186,7 +186,6 @@ describe('signed in with an active account', () => {
     const { getPathname } = renderRouter('./src/app', { initialUrl: '/' });
 
     expect(await homeHeader()).toBeOnTheScreen();
-    expect(screen.getByText('Environment: development')).toBeOnTheScreen();
     expect(getPathname()).toBe('/');
     expect(requests.find((r) => r.path === '/me')?.authorization).toBe('Bearer 1|fixture-access-token');
   });
@@ -231,7 +230,7 @@ describe('an account that may not use the app', () => {
       renderRouter(routes, { initialUrl: '/' });
 
       expect(await screen.findByRole('header', { name: title })).toBeOnTheScreen();
-      expect(screen.queryByRole('header', { name: 'TaxiKosmos (Dev)' })).not.toBeOnTheScreen();
+      expect(screen.queryByRole('button', { name: 'Drop-off: Where to?' })).not.toBeOnTheScreen();
 
       await user.press(screen.getByRole('button', { name: 'Email help@taxikosmos.test' }));
       await user.press(screen.getByRole('button', { name: 'Call +37410123456' }));
@@ -393,7 +392,7 @@ describe('a build that is too old', () => {
     await act(async () => handlers.forEach((handler) => handler('active')));
 
     expect(await screen.findByRole('header', { name: 'Update required' })).toBeOnTheScreen();
-    expect(screen.queryByRole('header', { name: 'TaxiKosmos (Dev)' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Drop-off: Where to?' })).not.toBeOnTheScreen();
   });
 
   it('does not stop a build the server says may run, even when a newer one exists', async () => {
@@ -423,7 +422,7 @@ describe('when the server cannot be reached', () => {
     renderRouter(routes, { initialUrl: '/' });
 
     expect(await screen.findByRole('header', { name: 'Something went wrong' })).toBeOnTheScreen();
-    expect(screen.queryByRole('header', { name: 'TaxiKosmos (Dev)' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Drop-off: Where to?' })).not.toBeOnTheScreen();
 
     backend.me = ok(fixtures.meRider);
     await user.press(screen.getByRole('button', { name: 'Try again' }));
@@ -471,7 +470,7 @@ describe('when the server cannot be reached', () => {
     });
 
     expect(screen.getByRole('progressbar', { name: 'Loading' })).toBeOnTheScreen();
-    expect(screen.queryByRole('header', { name: 'TaxiKosmos (Dev)' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Drop-off: Where to?' })).not.toBeOnTheScreen();
     expect(screen.queryByRole('header', { name: 'Something went wrong' })).not.toBeOnTheScreen();
 
     await act(async () => releaseAccount());

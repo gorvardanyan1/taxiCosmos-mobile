@@ -46,21 +46,20 @@ afterEach(async () => {
 });
 
 describe('rider app boot', () => {
-  it("boots through the root layout to the placeholder home with this build's identity and environment", async () => {
+  it('boots through the root layout to the rider home: the map, the pickup and where to', async () => {
     await signIn();
     // The real route tree in src/app, so a broken layout or a missing home route fails here.
     renderRouter('./src/app', { initialUrl: '/' });
 
-    expect(await screen.findByRole('header', { name: 'TaxiKosmos (Dev)' })).toBeOnTheScreen();
-    expect(screen.getByText('Environment: development')).toBeOnTheScreen();
-    expect(screen.getByText('API: http://10.0.2.2:8000')).toBeOnTheScreen();
+    expect(await screen.findByRole('button', { name: 'Drop-off: Where to?' })).toBeOnTheScreen();
+    expect(screen.getByTestId('Map')).toBeOnTheScreen();
   });
 
   it('boots a fresh install to the sign-in screen, not to the home screen', async () => {
     renderRouter('./src/app', { initialUrl: '/' });
 
     expect(await screen.findByRole('header', { name: 'Enter your phone number' })).toBeOnTheScreen();
-    expect(screen.queryByRole('header', { name: 'TaxiKosmos (Dev)' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Drop-off: Where to?' })).not.toBeOnTheScreen();
   });
 
   it('keeps the splash screen up from startup and hides it once, when fonts, theme and language are ready', async () => {

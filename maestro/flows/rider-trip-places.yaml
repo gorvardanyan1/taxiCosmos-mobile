@@ -1,0 +1,54 @@
+# Rider app, development build: a signed-in rider chooses where the ride starts and where it goes, sees the route priced, and goes on to the
+# ride options. Needs the backend's /geo/* and fare estimate for "Abovyan" (MAPS_PROVIDER=fake, or osm with internet) and a zone with a fare
+# rule that covers it. The location is refused on purpose, so both ends are chosen by search.
+# Run with -e APP_ID=<bundle id> (see maestro/scripts/run.sh rider); the device language must be English.
+appId: ${APP_ID}
+name: A rider chooses a pickup and a drop-off and reaches the ride options
+tags:
+  - smoke
+  - rider-only
+---
+- runFlow: auth-otp-sign-in.yaml
+- launchApp:
+    permissions:
+      location: deny
+- extendedWaitUntil:
+    visible: 'Where to\?'
+    timeout: 20000
+# Nothing can be done without a pickup, and the button says so.
+- assertVisible: 'Set your pickup to continue'
+- runFlow:
+    when:
+      visible: 'Enter an address instead'
+    commands:
+      - tapOn: 'Enter an address instead'
+- tapOn: 'Set your pickup'
+- tapOn: 'Pickup'
+- inputText: 'Abovyan'
+- extendedWaitUntil:
+    visible: '(?i)abovyan street.*'
+    timeout: 20000
+- tapOn:
+    text: '(?i)abovyan street.*'
+    index: 0
+- extendedWaitUntil:
+    visible: 'Choose where you are going'
+    timeout: 15000
+# The drop-off: a second address.
+- tapOn: 'Where to\?'
+- tapOn: 'Drop-off'
+- inputText: 'Abovyan'
+- extendedWaitUntil:
+    visible: '(?i)abovyan street.*'
+    timeout: 20000
+- tapOn:
+    text: '(?i)abovyan street.*'
+    index: 1
+# Priced: the button opens, and it leads to the ride options with the chosen route.
+- extendedWaitUntil:
+    visible: 'Continue'
+    timeout: 20000
+- tapOn: 'Continue'
+- extendedWaitUntil:
+    visible: 'Choose your ride'
+    timeout: 15000
