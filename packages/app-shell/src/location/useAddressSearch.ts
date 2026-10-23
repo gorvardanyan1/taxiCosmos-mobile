@@ -83,6 +83,5 @@ export function useAddressSearch(near: LatLng | null) {
     /** The lookup of the tapped suggestion is running or failed. */
     choosing: resolve.isPending,
     chooseFailed: resolve.isError,
-    session,
   };
 }

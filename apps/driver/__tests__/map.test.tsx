@@ -443,6 +443,21 @@ describe('address search', () => {
     expect(screen.queryByText(/Selected:/)).not.toBeOnTheScreen();
   });
 
+  it('locks the search box while the chosen place is being fetched, and opens it again after', async () => {
+    const user = userEvent.setup();
+    let answer: (() => void) | undefined;
+    backend.place = () => new Promise((resolve) => (answer = () => resolve(ok(fixtures.geoPlace))));
+    await openMap();
+    await user.type(searchBox(), 'Abov');
+
+    await user.press(await screen.findByRole('button', { name: 'Abovyan street 1, Yerevan' }));
+    expect(searchBox().props.editable).toBe(false);
+    await act(async () => answer?.());
+
+    expect(await screen.findByText('Selected: Fake address abovyan-1, Yerevan')).toBeOnTheScreen();
+    expect(searchBox().props.editable).toBe(true);
+  });
+
   it('looks the place up once when a suggestion is tapped twice', async () => {
     const user = userEvent.setup();
     let answer: (() => void) | undefined;
