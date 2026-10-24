@@ -551,8 +551,7 @@ describe('going on', () => {
     await user.press(await screen.findByRole('button', { name: 'Continue' }));
 
     expect(await screen.findByRole('header', { name: 'Choose your ride' })).toBeOnTheScreen();
-    expect(screen.getByText(HERE_ADDRESS)).toBeOnTheScreen();
-    expect(screen.getByText(PLACE.address)).toBeOnTheScreen();
+    expect(screen.getByRole('radio', { name: /^Economy, / })).toBeOnTheScreen();
     expect(calls('/trips/fare-estimate')).toHaveLength(1);
 
     await user.press(screen.getByRole('button', { name: 'Back' }));

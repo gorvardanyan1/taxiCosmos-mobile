@@ -9,7 +9,7 @@ src/app/
   _layout.tsx        root: ApiProvider > UiProvider > <AppShell> > Stack; starts Sentry (scrubbed) and holds the splash screen
   (app)/             the signed-in app. _layout.tsx sends anyone signed out to /sign-in?next=<where they were going>
     index.tsx        rider: the home (map, pickup, where to; booking/HomeScreen); driver: placeholder until M6
-    ride-options.tsx rider: where the home hands over (M4-T2 builds it); without a chosen route it goes back to the start
+    ride-options.tsx rider: the ride options (booking/RideOptionsScreen); without a chosen route it goes back to the start
   (auth)/            the signed-out screens. _layout.tsx sends anyone signed in on to `next` (or the start)
     sign-in.tsx      phone number, then the code (`SignInScreen`); hands the install id from `appApi.getDeviceId`
   design-preview.tsx development/staging tool, outside both groups
@@ -59,6 +59,18 @@ With both ends set the route is priced (`POST /trips/fare-estimate`): that answe
 (`422 outside_service_area` shows "Not available here" on the home screen, before the ride options). Only the latest route counts. **Continue** says
 on the disabled button what is missing (`booking/continueState`): pickup, drop-off, same place, checking prices, not served, no prices, offline.
 It opens `/ride-options` with the chosen route and quote in `TripDraft`, asking for a new price first when the one in hand has expired.
+
+## The ride options (M4-T2, `booking/RideOptionsScreen`)
+
+The route on the map and one card per vehicle class with its estimated price range (`formatMoneyRange`, minor units), a "Busy now ×1.5" note when the
+multiplier is above 1, the "estimated: the final fare may vary" note and how the rider pays (cash: the MVP; card and wallet wait for their
+gateways and screens). Choosing a class only changes the choice (`TripDraft.vehicleClass`; the first class shows as chosen until then, use
+`chosenEstimate`) and the fare line; the quote stays the same. The request (M4-T3) sends `draft.quote.quote_id` and the chosen class.
+
+`useQuoteLifecycle` keeps the price true: a quote lives ten minutes, and when it expires (a timer while the screen is open, or the app coming
+back) it is asked for again, the new price replaces the old one and the chosen class stays chosen when it is still priced. While it is on its way the cards
+stay, marked busy. If it cannot be had the screen says why (no connection / not available / not served) with a retry where retrying can help, and shows
+no price at all; a class whose price is zero or broken is left out (`usableEstimates`), and a quote with none usable counts as a failure.
 
 ## Signing in (`SignInScreen`, `NameScreen`)
 

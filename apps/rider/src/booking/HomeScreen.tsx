@@ -142,7 +142,7 @@ export function HomeScreen() {
 
     try {
       const quote = await plan.freshQuote();
-      setDraft({ pickup, dropoff, quote });
+      setDraft({ pickup, dropoff, quote, vehicleClass: null });
       router.push('/ride-options');
     } catch {
       // The failure is on screen (the plan's status), with its own retry.
