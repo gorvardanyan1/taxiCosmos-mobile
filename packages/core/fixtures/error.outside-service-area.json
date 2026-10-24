@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "headers": {
+    "x-ratelimit-limit": "30",
+    "x-ratelimit-remaining": "28"
+  },
+  "body": {
+    "message": "Sorry, we do not serve this pickup location yet.",
+    "code": "outside_service_area"
+  }
+}

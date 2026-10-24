@@ -1,0 +1,11 @@
+{
+  "status": 404,
+  "headers": {
+    "x-ratelimit-limit": "60",
+    "x-ratelimit-remaining": "52"
+  },
+  "body": {
+    "message": "This price quote does not exist.",
+    "code": "quote_not_found"
+  }
+}

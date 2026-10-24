@@ -12,11 +12,13 @@ import type {
   Paginated,
   SavedPlace,
   SupportTicket,
+  Trip,
 } from '@taxikosmos/core';
-import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApi, useSessionStatus } from './context';
 import { queryKeys } from './keys';
+import { putTrip } from './tripCache';
 
 interface QueryOptions {
   /** Turn the query off (for example until a form field has a value). It never runs while signed out. */
@@ -194,5 +196,42 @@ export function useGeoRoute(
     queryFn: ({ signal }) => api.geo.route(from as LatLng, to as LatLng, signal),
     enabled,
     staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * The rider's trip that is not finished, `null` when there is none. Always asked again when a screen opens (what the app remembers may
+ * be hours old): this is how a relaunch finds the search or the ride it left.
+ */
+export function useCurrentTrip(options: QueryOptions = {}): UseQueryResult<Trip | null> {
+  const api = useApi();
+
+  return useQuery({
+    queryKey: queryKeys.trips.current,
+    queryFn: ({ signal }) => api.trips.current(signal),
+    enabled: useSignedIn(options.enabled),
+    staleTime: 0,
+    refetchInterval: options.refetchInterval ?? false,
+  });
+}
+
+/** One trip, kept fresh by polling while a screen watches it. The last answer stays on screen while a poll fails. */
+export function useTrip(id: number | null, options: QueryOptions = {}): UseQueryResult<Trip> {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const enabled = useSignedIn(options.enabled) && id !== null;
+
+  return useQuery({
+    queryKey: queryKeys.trips.detail(id ?? 0),
+    // Every answer also updates "the current trip": a trip that finished must not be offered again by the home screen.
+    queryFn: async ({ signal }) => {
+      const trip = await api.trips.get(id as number, signal);
+      putTrip(queryClient, trip);
+
+      return trip;
+    },
+    enabled,
+    staleTime: 0,
+    refetchInterval: options.refetchInterval ?? false,
   });
 }

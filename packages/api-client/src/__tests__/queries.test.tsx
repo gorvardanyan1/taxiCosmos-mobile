@@ -3,7 +3,9 @@ import * as fixtures from '@taxikosmos/core/fixtures';
 import { act } from '@testing-library/react-native';
 
 import {
+  queryKeys,
   useAppConfig,
+  useCurrentTrip,
   useDebouncedValue,
   useDriverBankAccounts,
   useDriverDocuments,
@@ -17,6 +19,7 @@ import {
   useSessionStatus,
   useSupportTicket,
   useSupportTickets,
+  useTrip,
   shouldRetryQuery,
   retryDelay,
 } from '..';
@@ -124,6 +127,15 @@ describe('each read asks for the right resource and hands back the data', () => 
       fixtures.geoReverse.body.place,
     ],
     [
+      'useCurrentTrip',
+      () => useCurrentTrip(),
+      replyWith(fixtures.tripsCurrent),
+      '/trips/current',
+      {},
+      fixtures.tripsCurrent.body.data,
+    ],
+    ['useTrip', () => useTrip(1), replyWith(fixtures.tripsShow), '/trips/1', {}, fixtures.tripsShow.body.data],
+    [
       'useGeoRoute',
       () => useGeoRoute({ lat: 40.18, lng: 44.51 }, { lat: 40.2, lng: 44.53 }),
       replyWith(fixtures.geoRoute),
@@ -146,6 +158,7 @@ describe('each read asks for the right resource and hands back the data', () => 
     ['useSavedPlace(null)', () => useSavedPlace(null)],
     ['useSupportTicket(null)', () => useSupportTicket(null)],
     ['useGeoReverse(null)', () => useGeoReverse(null)],
+    ['useTrip(null)', () => useTrip(null)],
     ['useGeoRoute(null, point)', () => useGeoRoute(null, { lat: 1, lng: 2 })],
     ['useGeoRoute(point, null)', () => useGeoRoute({ lat: 1, lng: 2 }, null)],
   ])('%s asks for nothing until it has what it needs', async (_name, hook) => {
@@ -405,6 +418,66 @@ describe('refetching on an interval', () => {
         await jest.advanceTimersByTimeAsync(4_100);
       });
       await waitFor(() => expect(server.requests).toHaveLength(2));
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+describe('trips', () => {
+  it('has no trip going when the server answers 204: null, not an error', async () => {
+    const { result } = await renderWithApi(() => useCurrentTrip(), [{ status: 204 }]);
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data).toBeNull();
+  });
+
+  it('is asked again every time a screen opens: what is remembered may be hours old', async () => {
+    const { result, server, client, queryClient } = await renderWithApi(
+      () => useCurrentTrip(),
+      [replyWith(fixtures.tripsCurrent), { status: 204 }],
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const again = mountAgain(() => useCurrentTrip(), { client, queryClient });
+    await waitFor(() => expect(again.result.current.data).toBeNull());
+
+    expect(server.requests).toHaveLength(2);
+  });
+
+  it('polls a trip over REST when asked to', async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    try {
+      const { result, server } = await renderWithApi(
+        () => useTrip(1, { refetchInterval: 4_000 }),
+        [replyWith(fixtures.tripsShow), replyWith(fixtures.tripsShow)],
+      );
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(4_100);
+      });
+      await waitFor(() => expect(server.requests).toHaveLength(2));
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps "the current trip" in step with what a poll finds: the trip while it goes, nothing once it is over', async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    try {
+      const { result, queryClient } = await renderWithApi(
+        () => useTrip(1, { refetchInterval: 4_000 }),
+        [replyWith(fixtures.tripsShow), replyWith(fixtures.tripsNoDriverFound)],
+      );
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(queryClient.getQueryData(queryKeys.trips.current)).toEqual(fixtures.tripsShow.body.data);
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(4_100);
+      });
+
+      await waitFor(() => expect(queryClient.getQueryData(queryKeys.trips.current)).toBeNull());
+      expect(queryClient.getQueryData(queryKeys.trips.detail(1))).toEqual(fixtures.tripsNoDriverFound.body.data);
     } finally {
       jest.useRealTimers();
     }

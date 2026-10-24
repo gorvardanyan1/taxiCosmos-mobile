@@ -29,6 +29,8 @@ import {
   useSetAvailability,
   useSocialLogin,
   useSupportTickets,
+  useCancelTrip,
+  useRequestTrip,
   useUnregisterDevice,
   useUpdateMe,
   useUpdateSavedPlace,
@@ -53,6 +55,14 @@ const vehicle = {
 const upload = {
   type: 'license',
   file: { uri: 'file:///license.jpg', name: 'license.jpg', type: 'image/jpeg' },
+} as const;
+
+const tripBody = {
+  quote_id: fixtures.fareEstimate.body.quote_id,
+  vehicle_class: 'economy',
+  payment_method: 'cash',
+  pickup: { lat: 40.18, lng: 44.51, address: 'Abovyan St 1, Yerevan' },
+  dropoff: { lat: 40.2, lng: 44.53, address: 'Tumanyan St 10, Yerevan' },
 } as const;
 
 describe('every write sends the request the backend expects', () => {
@@ -185,6 +195,16 @@ describe('every write sends the request the backend expects', () => {
       '/support-tickets/1/messages',
       { body: 'Any update?' },
     ],
+    [
+      'useRequestTrip',
+      useRequestTrip as never,
+      tripBody,
+      replyWith(fixtures.tripsRequested),
+      'POST',
+      '/trips',
+      tripBody,
+    ],
+    ['useCancelTrip', useCancelTrip as never, 1, replyWith(fixtures.tripsCancelled), 'POST', '/trips/1/cancel', {}],
     [
       'useApplyAsDriver',
       useApplyAsDriver as never,
@@ -529,6 +549,143 @@ describe('a write updates what is on screen', () => {
     await waitFor(() => expect(server.requests).toHaveLength(3));
 
     expect(server.requests[2]).toMatchObject({ method: 'GET', path: '/me' });
+  });
+});
+
+describe('trips', () => {
+  const asKey = (request?: { headers: Record<string, string> }) => request?.headers['idempotency-key'];
+
+  it('booking puts the trip where the screens read it: its own entry and "the current trip"', async () => {
+    const { result, queryClient } = await renderWithApi(() => useRequestTrip(), [replyWith(fixtures.tripsRequested)]);
+    await act(async () => {
+      await result.current.mutateAsync(tripBody);
+    });
+
+    expect(queryClient.getQueryData(queryKeys.trips.detail(1))).toEqual(fixtures.tripsRequested.body.data);
+    expect(queryClient.getQueryData(queryKeys.trips.current)).toEqual(fixtures.tripsRequested.body.data);
+  });
+
+  it('a retry after a dropped connection sends the same Idempotency-Key and books one trip', async () => {
+    const { result, server } = await renderWithApi(
+      () => useRequestTrip(),
+      ['network-error', 'network-error', 'network-error', replyWith(fixtures.tripsRequested)],
+    );
+    await act(async () => {
+      await result.current.mutateAsync(tripBody).catch(() => undefined);
+    });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    await act(async () => {
+      await result.current.mutateAsync(tripBody);
+    });
+
+    expect(server.requests).toHaveLength(4);
+    expect(new Set(server.requests.map(asKey)).size).toBe(1);
+  });
+
+  it('a different class or quote is a new request with a new key', async () => {
+    const { result, server } = await renderWithApi(
+      () => useRequestTrip(),
+      ['network-error', 'network-error', 'network-error', replyWith(fixtures.tripsRequested)],
+    );
+    await act(async () => {
+      await result.current.mutateAsync(tripBody).catch(() => undefined);
+    });
+    await act(async () => {
+      await result.current.mutateAsync({ ...tripBody, vehicle_class: 'comfort' });
+    });
+
+    expect(asKey(server.requests[3])).not.toBe(asKey(server.requests[0]));
+  });
+
+  it('after a refusal the same request is tried again with a new key (the server did not keep the first)', async () => {
+    const { result, server } = await renderWithApi(
+      () => useRequestTrip(),
+      [replyWith(fixtures.errorQuoteExpired), replyWith(fixtures.tripsRequested)],
+    );
+    await act(async () => {
+      await result.current.mutateAsync(tripBody).catch(() => undefined);
+    });
+    await act(async () => {
+      await result.current.mutateAsync(tripBody);
+    });
+
+    expect(asKey(server.requests[1])).not.toBe(asKey(server.requests[0]));
+  });
+
+  it('after a success the next identical request is a new booking', async () => {
+    const { result, server } = await renderWithApi(
+      () => useRequestTrip(),
+      [replyWith(fixtures.tripsRequested), replyWith(fixtures.tripsRequested)],
+    );
+    await act(async () => {
+      await result.current.mutateAsync(tripBody);
+    });
+    await act(async () => {
+      await result.current.mutateAsync(tripBody);
+    });
+
+    expect(server.requests).toHaveLength(2);
+    expect(asKey(server.requests[1])).not.toBe(asKey(server.requests[0]));
+  });
+
+  it('a refusal because the rider already has a trip puts that trip in the cache', async () => {
+    const { result, queryClient } = await renderWithApi(() => useRequestTrip(), [replyWith(fixtures.errorTripActive)]);
+    await act(async () => {
+      await result.current.mutateAsync(tripBody).catch(() => undefined);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(queryClient.getQueryData(queryKeys.trips.current)).toEqual(fixtures.errorTripActive.body.trip);
+  });
+
+  it('a refusal for any other reason leaves the cache alone', async () => {
+    const { result, queryClient } = await renderWithApi(
+      () => useRequestTrip(),
+      [replyWith(fixtures.errorQuoteExpired)],
+    );
+    await act(async () => {
+      await result.current.mutateAsync(tripBody).catch(() => undefined);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(queryClient.getQueryData(queryKeys.trips.current)).toBeUndefined();
+  });
+
+  it('cancelling clears "the current trip" and keeps the cancelled trip readable', async () => {
+    const { result, queryClient } = await renderWithApi(() => useCancelTrip(), [replyWith(fixtures.tripsCancelled)]);
+    queryClient.setQueryData(queryKeys.trips.current, fixtures.tripsRequested.body.data);
+    await act(async () => {
+      await result.current.mutateAsync(1);
+    });
+
+    expect(queryClient.getQueryData(queryKeys.trips.current)).toBeNull();
+    expect(queryClient.getQueryData(queryKeys.trips.detail(1))).toEqual(fixtures.tripsCancelled.body.data);
+  });
+
+  it('a cancel that arrives too late (409) shows the trip as it is', async () => {
+    const { result, queryClient } = await renderWithApi(() => useCancelTrip(), [replyWith(fixtures.errorTripConflict)]);
+    queryClient.setQueryData(queryKeys.trips.current, fixtures.tripsRequested.body.data);
+    await act(async () => {
+      await result.current.mutateAsync(1).catch(() => undefined);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(queryClient.getQueryData(queryKeys.trips.detail(1))).toEqual(fixtures.errorTripConflict.body.trip);
+  });
+
+  it('cancelling twice (a retry after a dropped connection) sends the same key', async () => {
+    const { result, server } = await renderWithApi(
+      () => useCancelTrip(),
+      ['network-error', 'network-error', 'network-error', replyWith(fixtures.tripsCancelled)],
+    );
+    await act(async () => {
+      await result.current.mutateAsync(1).catch(() => undefined);
+    });
+    await act(async () => {
+      await result.current.mutateAsync(1);
+    });
+
+    expect(new Set(server.requests.map(asKey)).size).toBe(1);
   });
 });
 

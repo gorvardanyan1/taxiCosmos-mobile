@@ -22,6 +22,9 @@ import type {
   SavedPlace,
   SupportMessageReceipt,
   SupportTicket,
+  Trip,
+  TripConflict,
+  TripRequestRefusal,
 } from '../api/index.ts';
 
 /** app-config.ok: HTTP 200 with x-ratelimit-limit, x-ratelimit-remaining */
@@ -558,6 +561,46 @@ export const errorNotFound = {
   },
 } satisfies { status: number; headers: Record<string, string>; body: ApiErrorBody };
 
+/** error.outside-service-area: HTTP 422 with x-ratelimit-limit, x-ratelimit-remaining */
+export const errorOutsideServiceArea = {
+  status: 422,
+  headers: { 'x-ratelimit-limit': '30', 'x-ratelimit-remaining': '28' },
+  body: {
+    message: 'Sorry, we do not serve this pickup location yet.',
+    code: 'outside_service_area',
+  },
+} satisfies { status: number; headers: Record<string, string>; body: ApiErrorBody };
+
+/** error.quote-expired: HTTP 410 with x-ratelimit-limit, x-ratelimit-remaining */
+export const errorQuoteExpired = {
+  status: 410,
+  headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '49' },
+  body: {
+    message: 'This price quote has expired. Please get a new estimate.',
+    code: 'quote_expired',
+  },
+} satisfies { status: number; headers: Record<string, string>; body: ApiErrorBody };
+
+/** error.quote-not-found: HTTP 404 with x-ratelimit-limit, x-ratelimit-remaining */
+export const errorQuoteNotFound = {
+  status: 404,
+  headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '52' },
+  body: {
+    message: 'This price quote does not exist.',
+    code: 'quote_not_found',
+  },
+} satisfies { status: number; headers: Record<string, string>; body: ApiErrorBody };
+
+/** error.quote-route-changed: HTTP 422 with x-ratelimit-limit, x-ratelimit-remaining */
+export const errorQuoteRouteChanged = {
+  status: 422,
+  headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '53' },
+  body: {
+    message: 'The pickup or drop-off is not where the price was worked out. Please get a new estimate.',
+    code: 'quote_route_changed',
+  },
+} satisfies { status: number; headers: Record<string, string>; body: ApiErrorBody };
+
 /** error.rate-limited: HTTP 429 with retry-after, x-ratelimit-limit, x-ratelimit-remaining */
 export const errorRateLimited = {
   status: 429,
@@ -566,6 +609,102 @@ export const errorRateLimited = {
     message: 'Too Many Attempts.',
   },
 } satisfies { status: number; headers: Record<string, string>; body: ApiErrorBody };
+
+/** error.trip-active: HTTP 409 with x-ratelimit-limit, x-ratelimit-remaining */
+export const errorTripActive = {
+  status: 409,
+  headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '56' },
+  body: {
+    message: 'You already have a trip in progress.',
+    code: 'active_trip_exists',
+    trip: {
+      id: 1,
+      code: 'TK-W2HCD8P8',
+      status: 'requested',
+      vehicle_class: 'economy',
+      pickup: {
+        lat: 40.18,
+        lng: 44.51,
+        address: 'Abovyan St 1, Yerevan',
+      },
+      dropoff: {
+        lat: 40.2,
+        lng: 44.53,
+        address: 'Tumanyan St 10, Yerevan',
+      },
+      fare: {
+        currency: 'AMD',
+        estimated: 1192,
+        final: null,
+      },
+      payment: {
+        method: 'cash',
+        status: 'unpaid',
+      },
+      driver: null,
+      vehicle: null,
+      eta_to_pickup_seconds: null,
+      distance_meters: null,
+      duration_seconds: null,
+      cancelled_by: null,
+      cancel_reason: null,
+      requested_at: '2026-10-24T15:00:51+00:00',
+      matched_at: null,
+      arrived_at: null,
+      started_at: null,
+      completed_at: null,
+      cancelled_at: null,
+    },
+  },
+} satisfies { status: number; headers: Record<string, string>; body: TripRequestRefusal };
+
+/** error.trip-conflict: HTTP 409 with x-ratelimit-limit, x-ratelimit-remaining */
+export const errorTripConflict = {
+  status: 409,
+  headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '54' },
+  body: {
+    message: 'A trip cannot move from cancelled to cancelled.',
+    code: 'trip_state_conflict',
+    trip: {
+      id: 1,
+      code: 'TK-W2HCD8P8',
+      status: 'cancelled',
+      vehicle_class: 'economy',
+      pickup: {
+        lat: 40.18,
+        lng: 44.51,
+        address: 'Abovyan St 1, Yerevan',
+      },
+      dropoff: {
+        lat: 40.2,
+        lng: 44.53,
+        address: 'Tumanyan St 10, Yerevan',
+      },
+      fare: {
+        currency: 'AMD',
+        estimated: 1192,
+        final: null,
+      },
+      payment: {
+        method: 'cash',
+        status: 'unpaid',
+      },
+      driver: null,
+      vehicle: null,
+      eta_to_pickup_seconds: null,
+      distance_meters: null,
+      duration_seconds: null,
+      cancelled_by: 'rider',
+      cancel_reason: null,
+      requested_at: '2026-10-24T15:00:51+00:00',
+      matched_at: null,
+      arrived_at: null,
+      started_at: null,
+      completed_at: null,
+      cancelled_at: '2026-10-24T15:00:51+00:00',
+    },
+  },
+} satisfies { status: number; headers: Record<string, string>; body: TripConflict };
 
 /** error.unauthenticated: HTTP 401 */
 export const errorUnauthenticated = {
@@ -1041,3 +1180,233 @@ export const supportTicketShow = {
     },
   },
 } satisfies { status: number; headers: Record<string, string>; body: Data<SupportTicket> };
+
+/** trips.cancelled: HTTP 200 with x-ratelimit-limit, x-ratelimit-remaining */
+export const tripsCancelled = {
+  status: 200,
+  headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '55' },
+  body: {
+    data: {
+      id: 1,
+      code: 'TK-W2HCD8P8',
+      status: 'cancelled',
+      vehicle_class: 'economy',
+      pickup: {
+        lat: 40.18,
+        lng: 44.51,
+        address: 'Abovyan St 1, Yerevan',
+      },
+      dropoff: {
+        lat: 40.2,
+        lng: 44.53,
+        address: 'Tumanyan St 10, Yerevan',
+      },
+      fare: {
+        currency: 'AMD',
+        estimated: 1192,
+        final: null,
+      },
+      payment: {
+        method: 'cash',
+        status: 'unpaid',
+      },
+      driver: null,
+      vehicle: null,
+      eta_to_pickup_seconds: null,
+      distance_meters: null,
+      duration_seconds: null,
+      cancelled_by: 'rider',
+      cancel_reason: null,
+      requested_at: '2026-10-24T15:00:51+00:00',
+      matched_at: null,
+      arrived_at: null,
+      started_at: null,
+      completed_at: null,
+      cancelled_at: '2026-10-24T15:00:51+00:00',
+    },
+  },
+} satisfies { status: number; headers: Record<string, string>; body: Data<Trip> };
+
+/** trips.current: HTTP 200 with x-ratelimit-limit, x-ratelimit-remaining */
+export const tripsCurrent = {
+  status: 200,
+  headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '58' },
+  body: {
+    data: {
+      id: 1,
+      code: 'TK-W2HCD8P8',
+      status: 'requested',
+      vehicle_class: 'economy',
+      pickup: {
+        lat: 40.18,
+        lng: 44.51,
+        address: 'Abovyan St 1, Yerevan',
+      },
+      dropoff: {
+        lat: 40.2,
+        lng: 44.53,
+        address: 'Tumanyan St 10, Yerevan',
+      },
+      fare: {
+        currency: 'AMD',
+        estimated: 1192,
+        final: null,
+      },
+      payment: {
+        method: 'cash',
+        status: 'unpaid',
+      },
+      driver: null,
+      vehicle: null,
+      eta_to_pickup_seconds: null,
+      distance_meters: null,
+      duration_seconds: null,
+      cancelled_by: null,
+      cancel_reason: null,
+      requested_at: '2026-10-24T15:00:51+00:00',
+      matched_at: null,
+      arrived_at: null,
+      started_at: null,
+      completed_at: null,
+      cancelled_at: null,
+    },
+  },
+} satisfies { status: number; headers: Record<string, string>; body: Data<Trip> };
+
+/** trips.no-driver-found: HTTP 200 with x-ratelimit-limit, x-ratelimit-remaining */
+export const tripsNoDriverFound = {
+  status: 200,
+  headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '50' },
+  body: {
+    data: {
+      id: 2,
+      code: 'TK-FG8J3CZM',
+      status: 'no_driver_found',
+      vehicle_class: 'economy',
+      pickup: {
+        lat: 40.18,
+        lng: 44.51,
+        address: 'Abovyan St 1, Yerevan',
+      },
+      dropoff: {
+        lat: 40.2,
+        lng: 44.53,
+        address: 'Tumanyan St 10, Yerevan',
+      },
+      fare: {
+        currency: 'AMD',
+        estimated: 1192,
+        final: null,
+      },
+      payment: {
+        method: 'cash',
+        status: 'unpaid',
+      },
+      driver: null,
+      vehicle: null,
+      eta_to_pickup_seconds: null,
+      distance_meters: null,
+      duration_seconds: null,
+      cancelled_by: null,
+      cancel_reason: null,
+      requested_at: '2026-10-24T15:00:51+00:00',
+      matched_at: null,
+      arrived_at: null,
+      started_at: null,
+      completed_at: null,
+      cancelled_at: null,
+    },
+  },
+} satisfies { status: number; headers: Record<string, string>; body: Data<Trip> };
+
+/** trips.requested: HTTP 201 with x-ratelimit-limit, x-ratelimit-remaining */
+export const tripsRequested = {
+  status: 201,
+  headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '59' },
+  body: {
+    data: {
+      id: 1,
+      code: 'TK-W2HCD8P8',
+      status: 'requested',
+      vehicle_class: 'economy',
+      pickup: {
+        lat: 40.18,
+        lng: 44.51,
+        address: 'Abovyan St 1, Yerevan',
+      },
+      dropoff: {
+        lat: 40.2,
+        lng: 44.53,
+        address: 'Tumanyan St 10, Yerevan',
+      },
+      fare: {
+        currency: 'AMD',
+        estimated: 1192,
+        final: null,
+      },
+      payment: {
+        method: 'cash',
+        status: 'unpaid',
+      },
+      driver: null,
+      vehicle: null,
+      eta_to_pickup_seconds: null,
+      distance_meters: null,
+      duration_seconds: null,
+      cancelled_by: null,
+      cancel_reason: null,
+      requested_at: '2026-10-24T15:00:51+00:00',
+      matched_at: null,
+      arrived_at: null,
+      started_at: null,
+      completed_at: null,
+      cancelled_at: null,
+    },
+  },
+} satisfies { status: number; headers: Record<string, string>; body: Data<Trip> };
+
+/** trips.show: HTTP 200 with x-ratelimit-limit, x-ratelimit-remaining */
+export const tripsShow = {
+  status: 200,
+  headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '57' },
+  body: {
+    data: {
+      id: 1,
+      code: 'TK-W2HCD8P8',
+      status: 'requested',
+      vehicle_class: 'economy',
+      pickup: {
+        lat: 40.18,
+        lng: 44.51,
+        address: 'Abovyan St 1, Yerevan',
+      },
+      dropoff: {
+        lat: 40.2,
+        lng: 44.53,
+        address: 'Tumanyan St 10, Yerevan',
+      },
+      fare: {
+        currency: 'AMD',
+        estimated: 1192,
+        final: null,
+      },
+      payment: {
+        method: 'cash',
+        status: 'unpaid',
+      },
+      driver: null,
+      vehicle: null,
+      eta_to_pickup_seconds: null,
+      distance_meters: null,
+      duration_seconds: null,
+      cancelled_by: null,
+      cancel_reason: null,
+      requested_at: '2026-10-24T15:00:51+00:00',
+      matched_at: null,
+      arrived_at: null,
+      started_at: null,
+      completed_at: null,
+      cancelled_at: null,
+    },
+  },
+} satisfies { status: number; headers: Record<string, string>; body: Data<Trip> };

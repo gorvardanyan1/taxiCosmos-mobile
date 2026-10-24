@@ -10,6 +10,11 @@ export const queryKeys = {
     list: () => ['saved-places', 'list'] as const,
     detail: (id: number) => ['saved-places', 'detail', id] as const,
   },
+  trips: {
+    all: ['trips'] as const,
+    current: ['trips', 'current'] as const,
+    detail: (id: number) => ['trips', 'detail', id] as const,
+  },
   support: {
     all: ['support-tickets'] as const,
     list: (page: number) => ['support-tickets', 'list', page] as const,

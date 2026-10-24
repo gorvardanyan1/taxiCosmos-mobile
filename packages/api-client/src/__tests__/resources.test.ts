@@ -21,6 +21,13 @@ interface Case {
 }
 
 const point = { lat: 40.18, lng: 44.51 };
+const tripBody = {
+  quote_id: fixtures.fareEstimate.body.quote_id,
+  vehicle_class: 'economy',
+  payment_method: 'cash',
+  pickup: { ...point, address: 'Abovyan St 1, Yerevan' },
+  dropoff: { lat: 40.2, lng: 44.53, address: 'Tumanyan St 10, Yerevan' },
+} as const;
 
 const cases: Case[] = [
   // ---- sign-in (the tokens are checked in the session tests below) ----
@@ -243,6 +250,49 @@ const cases: Case[] = [
     path: '/trips/fare-estimate',
     body: { pickup: point, dropoff: { lat: 40.2, lng: 44.53 } },
     result: fixtures.fareEstimate.body,
+  },
+  // ---- trips ----
+  {
+    name: 'trips.request',
+    call: (api) => api.trips.request(tripBody),
+    reply: replyWith(fixtures.tripsRequested),
+    method: 'POST',
+    path: '/trips',
+    body: tripBody,
+    result: fixtures.tripsRequested.body.data,
+  },
+  {
+    name: 'trips.current',
+    call: (api) => api.trips.current(),
+    reply: replyWith(fixtures.tripsCurrent),
+    method: 'GET',
+    path: '/trips/current',
+    result: fixtures.tripsCurrent.body.data,
+  },
+  {
+    name: 'trips.current (no trip going: 204)',
+    call: (api) => api.trips.current(),
+    reply: { status: 204 },
+    method: 'GET',
+    path: '/trips/current',
+    result: null,
+  },
+  {
+    name: 'trips.get',
+    call: (api) => api.trips.get(1),
+    reply: replyWith(fixtures.tripsShow),
+    method: 'GET',
+    path: '/trips/1',
+    result: fixtures.tripsShow.body.data,
+  },
+  {
+    name: 'trips.cancel',
+    call: (api) => api.trips.cancel(1),
+    reply: replyWith(fixtures.tripsCancelled),
+    method: 'POST',
+    path: '/trips/1/cancel',
+    body: {},
+    result: fixtures.tripsCancelled.body.data,
   },
   // ---- support ----
   {

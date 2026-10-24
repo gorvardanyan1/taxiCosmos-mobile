@@ -1,0 +1,37 @@
+# Rider app, development build: a signed-in rider requests a ride from the ride options, sees the search for a driver, cancels it and is back
+# on the booking screen, ready to request again. Needs what rider-trip-places needs (fake or osm maps and a zone with fare rules); a driver is
+# not needed, the search is left on purpose. Cash is the only payment. Run with -e APP_ID=<bundle id> (see maestro/scripts/run.sh rider);
+# the device language must be English.
+appId: ${APP_ID}
+name: A rider requests a ride, waits for a driver and cancels the search
+tags:
+  - matching
+  - money
+  - rider-only
+---
+- runFlow: rider-trip-places.yaml
+- tapOn: 'Request Economy'
+# The request went through: the search is on screen, with a way out.
+- extendedWaitUntil:
+    visible: 'Looking for a driver'
+    timeout: 20000
+- assertVisible: 'Cancel ride'
+- tapOn: 'Cancel ride'
+# Cancelled on the server and back to booking: the search is gone and the home screen is ready for the next ride.
+- extendedWaitUntil:
+    visible: 'Continue'
+    timeout: 20000
+- assertNotVisible: 'Looking for a driver'
+# The next request is a new ride, not the cancelled one coming back.
+- tapOn: 'Continue'
+- extendedWaitUntil:
+    visible: 'Request Economy'
+    timeout: 15000
+- tapOn: 'Request Economy'
+- extendedWaitUntil:
+    visible: 'Looking for a driver'
+    timeout: 20000
+- tapOn: 'Cancel ride'
+- extendedWaitUntil:
+    visible: 'Continue'
+    timeout: 20000

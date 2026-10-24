@@ -1,4 +1,4 @@
-import { useGeoReverse, useGeoRoute } from '@taxikosmos/api-client';
+import { useCurrentTrip, useGeoReverse, useGeoRoute } from '@taxikosmos/api-client';
 import { AddressSearch, LocationPrompt, useForegroundLocation } from '@taxikosmos/app-shell';
 import {
   addressAt,
@@ -11,7 +11,7 @@ import {
   type LatLng,
 } from '@taxikosmos/core';
 import { Button, Card, Icon, IconButton, MapView, Text, useUiTranslation, type MapMarker } from '@taxikosmos/ui';
-import { useRouter } from 'expo-router';
+import { Redirect, useIsFocused, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { BackHandler, Linking, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,6 +35,9 @@ export function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { setDraft } = useTripDraft();
+  // A ride that is still going (found again after the app was closed) takes over the home screen.
+  const currentTrip = useCurrentTrip();
+  const focused = useIsFocused();
   const location = useForegroundLocation();
   const [mode, setMode] = useState<Mode>('overview');
   // Chosen by the rider; until then the pickup is where the phone is.
@@ -153,6 +156,10 @@ export function HomeScreen() {
     location.permission === 'undetermined' || location.permission === 'denied' || location.permission === 'blocked'
       ? location.permission
       : null;
+
+  if (focused && currentTrip.data) {
+    return <Redirect href={{ pathname: '/trip', params: { id: String(currentTrip.data.id) } }} />;
+  }
 
   return (
     <View className="flex-1 bg-paper dark:bg-slate-950">

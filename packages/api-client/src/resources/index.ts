@@ -5,6 +5,7 @@ import { authApi } from './auth';
 import { driverApi } from './driver';
 import { faresApi, geoApi } from './maps';
 import { supportApi } from './support';
+import { tripsApi } from './trips';
 
 /** Every `/api/v1` endpoint the apps use today, as typed functions. Backend tasks still to come add theirs here. */
 export function createApi(client: ApiClient) {
@@ -16,6 +17,7 @@ export function createApi(client: ApiClient) {
     devices: devicesApi(client),
     geo: geoApi(client),
     fares: faresApi(client),
+    trips: tripsApi(client),
     support: supportApi(client),
     driver: driverApi(client),
   };

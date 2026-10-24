@@ -10,6 +10,7 @@ src/app/
   (app)/             the signed-in app. _layout.tsx sends anyone signed out to /sign-in?next=<where they were going>
     index.tsx        rider: the home (map, pickup, where to; booking/HomeScreen); driver: placeholder until M6
     ride-options.tsx rider: the ride options (booking/RideOptionsScreen); without a chosen route it goes back to the start
+    trip.tsx         rider: a requested ride (booking/TripScreen), opened with ?id=<trip id>; a missing or odd id goes back to the start
   (auth)/            the signed-out screens. _layout.tsx sends anyone signed in on to `next` (or the start)
     sign-in.tsx      phone number, then the code (`SignInScreen`); hands the install id from `appApi.getDeviceId`
   design-preview.tsx development/staging tool, outside both groups
@@ -71,6 +72,26 @@ gateways and screens). Choosing a class only changes the choice (`TripDraft.vehi
 back) it is asked for again, the new price replaces the old one and the chosen class stays chosen when it is still priced. While it is on its way the cards
 stay, marked busy. If it cannot be had the screen says why (no connection / not available / not served) with a retry where retrying can help, and shows
 no price at all; a class whose price is zero or broken is left out (`usableEstimates`), and a quote with none usable counts as a failure.
+
+## Requesting a ride and the search (M4-T3, `RideOptionsScreen` + `booking/TripScreen`)
+
+"Request <class>" sends `POST /trips` (cash, the quote, the class, both places) with an `Idempotency-Key` that belongs to that exact request
+(`useRequestTrip`): a double tap, or a retry after a dropped connection, carries the same key and the server books one ride; a new quote,
+class or place is a new request. The button stays busy until the answer is in. A quote that expired is replaced first (the rider sees the
+new price before anything is sent). The answer opens `/trip?id=<id>` (replacing the ride options).
+
+Why a request did not work is one of three different things (`requestFailure`): it did not get through (no connection / server error /
+too many attempts: "Try again"), the server refused it (a ride already going: "Open my ride"; the price is out of date: new prices are
+fetched and the rider requests again; the pickup is not served; any other reason in the server's own words), or, later, nobody took the
+ride (a trip state, below). A card hold with 3-D Secure and an outstanding balance do not exist in the MVP (cash only).
+
+`TripScreen` reads the trip over REST by id and asks again every 4 seconds (and when the app comes back; there is no realtime service): a
+searching trip shows the animated radius and "Cancel ride" (`POST /trips/{id}/cancel`, one key per trip, so a retry cannot cancel twice);
+`no_driver_found` shows "No drivers available" with "Try again" (back to the ride options, a new request) and "Back to home"; a trip with a
+driver shows a plain card until the live trip (M4-T4); a trip that is over (cancelled here or elsewhere, completed, not the rider's) goes back
+to the start with the draft cleared. A 409 on cancel carries the trip as it now is, and the screen shows that. The home screen asks
+`GET /trips/current` whenever it opens and sends the rider to the ride that is still going: this is how a relaunch finds the search.
+The cache entry "current trip" follows every answer (`putTrip`), so a finished trip is never offered again.
 
 ## Signing in (`SignInScreen`, `NameScreen`)
 

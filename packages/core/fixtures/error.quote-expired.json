@@ -1,0 +1,11 @@
+{
+  "status": 410,
+  "headers": {
+    "x-ratelimit-limit": "60",
+    "x-ratelimit-remaining": "49"
+  },
+  "body": {
+    "message": "This price quote has expired. Please get a new estimate.",
+    "code": "quote_expired"
+  }
+}
