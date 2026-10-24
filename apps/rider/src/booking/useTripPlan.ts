@@ -72,6 +72,20 @@ export function useTripPlan(pickup: AddressPoint | null, dropoff: AddressPoint |
   return { status: statusOf(pickup, dropoff, same, estimate), quote: estimate.data, retry, freshQuote };
 }
 
+/** Why a price could not be had: the pickup is not served, the area has no prices, there is no connection, or something else went wrong. */
+export function estimateFailure(error: unknown): 'outside' | 'no_prices' | 'offline' | 'failed' {
+  const code = errorCodeOf(error);
+  const kind = getApiError(error)?.kind;
+
+  return code === 'outside_service_area'
+    ? 'outside'
+    : code === 'no_fare_rules'
+      ? 'no_prices'
+      : kind === 'network' || kind === 'timeout'
+        ? 'offline'
+        : 'failed';
+}
+
 function statusOf(
   pickup: AddressPoint | null,
   dropoff: AddressPoint | null,
@@ -87,16 +101,7 @@ function statusOf(
   }
 
   if (estimate.isError) {
-    const code = errorCodeOf(estimate.error);
-    const kind = getApiError(estimate.error)?.kind;
-
-    return code === 'outside_service_area'
-      ? 'outside'
-      : code === 'no_fare_rules'
-        ? 'no_prices'
-        : kind === 'network' || kind === 'timeout'
-          ? 'offline'
-          : 'failed';
+    return estimateFailure(estimate.error);
   }
 
   return estimate.isSuccess ? 'ready' : 'checking';
