@@ -66,6 +66,15 @@ export interface FareEstimateBody {
   dropoff: LatLng;
 }
 
+/** `POST /trips`. The price comes from the quote, never from the body; the MVP takes cash only. */
+export interface TripRequestBody {
+  quote_id: string;
+  vehicle_class: VehicleClass;
+  payment_method: 'cash';
+  pickup: { lat: number; lng: number; address: string };
+  dropoff: { lat: number; lng: number; address: string };
+}
+
 export interface GeoAutocompleteQuery extends Partial<LatLng> {
   q: string;
   /** One token per search session (letters, digits, `_`, `-`, up to 64): the maps provider bills a whole session as one. */

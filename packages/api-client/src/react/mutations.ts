@@ -21,14 +21,17 @@ import type {
   SocialProvider,
   SupportMessageBody,
   SupportTicketBody,
+  Trip,
+  TripRequestBody,
   UpdateMeBody,
 } from '@taxikosmos/core';
-import { newIdempotencyKey } from '@taxikosmos/core';
+import { newIdempotencyKey, tripOfConflict } from '@taxikosmos/core';
 import { useMutation, useQueryClient, type QueryClient, type UseMutationResult } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import { useApi } from './context';
 import { queryKeys } from './keys';
+import { putTrip } from './tripCache';
 
 type Mutation<TData, TVars> = UseMutationResult<TData, Error, TVars>;
 
@@ -216,6 +219,55 @@ export function useFareEstimate() {
   const api = useApi();
 
   return useMutation({ mutationFn: (body: FareEstimateBody) => api.fares.estimate(body) });
+}
+
+// ---- trips ----
+
+/**
+ * Books a ride. Pressing "Request" again after a failure (or double-tapping it) sends the same `Idempotency-Key`, so the server creates one
+ * trip; a different quote, class or place starts a new request. A 409 that carries the rider's existing trip puts that trip in the cache.
+ */
+export function useRequestTrip() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const intent = useIntent('trip-request');
+
+  return useMutation({
+    mutationFn: (body: TripRequestBody) => api.trips.request(body, intent.operationFor(body)),
+    onSuccess: (trip) => {
+      intent.done();
+      putTrip(queryClient, trip);
+    },
+    onError: (error) => {
+      const existing = tripOfConflict(error);
+
+      if (existing !== null) {
+        putTrip(queryClient, existing);
+      }
+    },
+  });
+}
+
+/** Cancels a trip; a 409 (it moved on meanwhile) shows the trip as it is now. */
+export function useCancelTrip() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const intent = useIntent('trip-cancel');
+
+  return useMutation({
+    mutationFn: (id: number) => api.trips.cancel(id, intent.operationFor(id)),
+    onSuccess: (trip) => {
+      intent.done();
+      putTrip(queryClient, trip);
+    },
+    onError: (error) => {
+      const current = tripOfConflict(error);
+
+      if (current !== null) {
+        putTrip(queryClient, current);
+      }
+    },
+  });
 }
 
 // ---- support ----

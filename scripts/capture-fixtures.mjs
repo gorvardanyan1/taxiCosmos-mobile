@@ -40,6 +40,17 @@ const TYPES = {
   'saved-places.list': 'Data<SavedPlace[]>',
   'saved-places.show': 'Data<SavedPlace>',
   'fare-estimate': 'FareQuote',
+  'trips.requested': 'Data<Trip>',
+  'trips.current': 'Data<Trip>',
+  'trips.show': 'Data<Trip>',
+  'trips.cancelled': 'Data<Trip>',
+  'trips.no-driver-found': 'Data<Trip>',
+  'error.trip-active': 'TripRequestRefusal',
+  'error.trip-conflict': 'TripConflict',
+  'error.quote-route-changed': 'ApiErrorBody',
+  'error.quote-not-found': 'ApiErrorBody',
+  'error.quote-expired': 'ApiErrorBody',
+  'error.outside-service-area': 'ApiErrorBody',
   'geo.autocomplete': 'GeoAutocompleteResponse',
   'geo.place': 'GeoPlaceResponse',
   'geo.reverse': 'GeoPlaceResponse',
@@ -189,14 +200,81 @@ async function main() {
     await call('saved-places.list', 'GET', '/saved-places', { token: rt });
     await call('saved-places.show', 'GET', `/saved-places/${place.body.data.id}`, { token: rt });
     await call('error.not-found', 'GET', '/saved-places/999999', { token: rt });
-    await call('fare-estimate', 'POST', '/trips/fare-estimate', {
+    const estimate = await call('fare-estimate', 'POST', '/trips/fare-estimate', {
       token: rt,
       body: { pickup: { lat: 40.18, lng: 44.51 }, dropoff: { lat: 40.2, lng: 44.53 } },
+    });
+    await call('error.outside-service-area', 'POST', '/trips/fare-estimate', {
+      token: rt,
+      body: { pickup: { lat: 10, lng: 10 }, dropoff: { lat: 10.01, lng: 10.01 } },
     });
     await call('error.validation', 'POST', '/trips/fare-estimate', {
       token: rt,
       body: { pickup: { lat: 40.18, lng: 44.51 } },
     });
+    // ---- a trip: request, the one in progress, a refused second request, cancel, a trip nobody picked up ----
+    const tripBody = {
+      quote_id: estimate.body.quote_id,
+      vehicle_class: 'economy',
+      payment_method: 'cash',
+      pickup: { lat: 40.18, lng: 44.51, address: 'Abovyan St 1, Yerevan' },
+      dropoff: { lat: 40.2, lng: 44.53, address: 'Tumanyan St 10, Yerevan' },
+    };
+    const key = (n) => `0197a000-0000-7000-8000-0000000001${n}`;
+    const trip = await call('trips.requested', 'POST', '/trips', {
+      token: rt,
+      headers: { 'Idempotency-Key': key(1) },
+      body: tripBody,
+    });
+    await call('trips.current', 'GET', '/trips/current', { token: rt });
+    await call('trips.show', 'GET', `/trips/${trip.body.data.id}`, { token: rt });
+    await call('error.trip-active', 'POST', '/trips', {
+      token: rt,
+      headers: { 'Idempotency-Key': key(2) },
+      body: tripBody,
+    });
+    await call('trips.cancelled', 'POST', `/trips/${trip.body.data.id}/cancel`, {
+      token: rt,
+      headers: { 'Idempotency-Key': key(3) },
+      body: {},
+    });
+    await call('error.trip-conflict', 'POST', `/trips/${trip.body.data.id}/cancel`, {
+      token: rt,
+      headers: { 'Idempotency-Key': key(4) },
+      body: {},
+    });
+    await call('error.quote-route-changed', 'POST', '/trips', {
+      token: rt,
+      headers: { 'Idempotency-Key': key(5) },
+      body: { ...tripBody, pickup: { lat: 40.3, lng: 44.6, address: 'Somewhere else' } },
+    });
+    await call('error.quote-not-found', 'POST', '/trips', {
+      token: rt,
+      headers: { 'Idempotency-Key': key(6) },
+      body: { ...tripBody, quote_id: '00000000-0000-4000-8000-000000000000' },
+    });
+    const second = await call(null, 'POST', '/trips', {
+      token: rt,
+      headers: { 'Idempotency-Key': key(7) },
+      body: tripBody,
+    });
+    run('php', [
+      'artisan',
+      'tinker',
+      `--execute=App\\Models\\Trip::whereKey(${second.body.data.id})->update(['status' => 'no_driver_found']);`,
+    ]);
+    await call('trips.no-driver-found', 'GET', `/trips/${second.body.data.id}`, { token: rt });
+    run('php', [
+      'artisan',
+      'tinker',
+      "--execute=App\\Models\\FareQuote::query()->update(['expires_at' => now()->subMinute()]);",
+    ]);
+    await call('error.quote-expired', 'POST', '/trips', {
+      token: rt,
+      headers: { 'Idempotency-Key': key(8) },
+      body: tripBody,
+    });
+
     const suggestions = await call('geo.autocomplete', 'GET', '/geo/autocomplete', {
       token: rt,
       query: { q: 'Abovyan', lat: 40.18, lng: 44.51, session: 'fixture-session-1' },

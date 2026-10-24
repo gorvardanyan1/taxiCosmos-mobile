@@ -5,9 +5,9 @@ import { decodePolyline } from '@taxikosmos/core';
 import * as fixtures from '@taxikosmos/core/fixtures';
 import * as Location from 'expo-location';
 import { renderRouter, screen } from 'expo-router/testing-library';
-import { AppState, type AppStateStatus } from 'react-native';
 
 import { installBackend, ok, signIn, signOut, type Backend, type RecordedRequest } from '../test-support/backend';
+import { captureAppState, estimate, openRideOptions, PRICES, quoteWith } from '../test-support/booking';
 
 jest.mock('../src/config', () => ({
   appConfig: { environment: 'development', apiUrl: 'http://10.0.2.2:8000', mapTileUrl: null, app: 'rider' },
@@ -48,29 +48,6 @@ const permissions = {
 let backend: Backend;
 let requests: RecordedRequest[];
 
-type Class = 'economy' | 'comfort' | 'business';
-const estimate = (vehicle_class: Class, amount: number, surge = '1.00') => ({
-  vehicle_class,
-  currency: 'AMD',
-  amount,
-  amount_min: Math.round(amount * 0.9),
-  amount_max: Math.round(amount * 1.1),
-  surge_multiplier: surge,
-  eta_to_pickup_seconds: null,
-});
-/** economy 900–1,100, comfort 1,350–1,650 (busy ×1.5), business 2,250–2,750. */
-const PRICES = [estimate('economy', 1000), estimate('comfort', 1500, '1.50'), estimate('business', 2500)];
-const quoteWith = (estimates: unknown[], expiresInMinutes = 10, id = fixtures.fareEstimate.body.quote_id) =>
-  ok({
-    ...fixtures.fareEstimate,
-    body: {
-      ...fixtures.fareEstimate.body,
-      quote_id: id,
-      estimates,
-      expires_at: new Date(Date.now() + expiresInMinutes * 60_000).toISOString(),
-    },
-  });
-
 beforeEach(async () => {
   ({ backend, requests } = installBackend());
   backend.fareEstimate = quoteWith(PRICES);
@@ -96,30 +73,6 @@ afterEach(async () => {
 const estimates = () => requests.filter((request) => request.path === '/trips/fare-estimate');
 const card = (name: string) => screen.getByRole('radio', { name: new RegExp(`^${name}, `) });
 const cards = () => screen.getAllByRole('radio');
-
-type User = ReturnType<typeof userEvent.setup>;
-
-/** Home > Where to? > a drop-off > Continue: the way a rider gets to the ride options. */
-async function openRideOptions(user: User) {
-  renderRouter('./src/app', { initialUrl: '/' });
-  await user.press(await screen.findByRole('button', { name: /^Drop-off: / }));
-  await user.type(await screen.findByLabelText('Drop-off'), 'Abov');
-  await user.press(await screen.findByRole('button', { name: 'Abovyan street 1, Yerevan' }));
-  await user.press(await screen.findByRole('button', { name: 'Continue' }));
-  await screen.findByRole('header', { name: 'Choose your ride' });
-}
-
-/** The listeners the app registered for the app coming back to the front; calling them is the rider opening the app again. */
-function captureAppState() {
-  const listeners: ((state: AppStateStatus) => void)[] = [];
-  jest.spyOn(AppState, 'addEventListener').mockImplementation((_, listener) => {
-    listeners.push(listener as (state: AppStateStatus) => void);
-
-    return { remove: () => void listeners.splice(listeners.indexOf(listener as (state: AppStateStatus) => void), 1) };
-  });
-
-  return () => listeners.slice().forEach((listener) => listener('active'));
-}
 
 describe('the cards', () => {
   it('show one card per vehicle class with its estimated price range, the first one chosen', async () => {

@@ -7,6 +7,7 @@
  * the `Accept-Language` header.
  */
 
+import type { ApiErrorBody } from './errors.ts';
 import type { SocialProvider } from './requests.ts';
 
 /** An ISO 8601 instant such as `2026-10-16T07:31:28+00:00`. */
@@ -166,6 +167,60 @@ export interface FareQuote {
   distance_meters: number;
   duration_seconds: number;
   estimates: FareEstimate[];
+}
+
+// ---- trips ----
+
+/** `matched`: a driver accepted and is on the way. `no_driver_found`, `completed` and `cancelled` are final. */
+export type TripStatus =
+  'requested' | 'matched' | 'arrived' | 'in_progress' | 'completed' | 'cancelled' | 'no_driver_found';
+export type TripPaymentMethod = 'cash' | 'card' | 'wallet';
+export type TripCancelledBy = 'rider' | 'driver' | 'admin' | 'system';
+
+export interface TripPlace extends LatLng {
+  address: string;
+}
+
+/** A trip as the rider app sees it (the driver's phone never appears; `driver` and `vehicle` are `null` until someone has the trip). */
+export interface Trip {
+  id: number;
+  code: string;
+  status: TripStatus;
+  vehicle_class: VehicleClass;
+  pickup: TripPlace;
+  dropoff: TripPlace;
+  fare: { currency: string; estimated: number; final: number | null };
+  payment: { method: TripPaymentMethod; status: string };
+  driver: { name: string; rating_avg: number | null; rating_count: number } | null;
+  vehicle: {
+    make: string;
+    model: string;
+    color: string;
+    plate_number: string;
+    vehicle_class: VehicleClass;
+  } | null;
+  eta_to_pickup_seconds: number | null;
+  /** Worked out when the trip is completed; `null` before. */
+  distance_meters: number | null;
+  duration_seconds: number | null;
+  cancelled_by: TripCancelledBy | null;
+  cancel_reason: string | null;
+  requested_at: IsoInstant;
+  matched_at: IsoInstant | null;
+  arrived_at: IsoInstant | null;
+  started_at: IsoInstant | null;
+  completed_at: IsoInstant | null;
+  cancelled_at: IsoInstant | null;
+}
+
+/** 409 `active_trip_exists` of `POST /trips`: the rider already has this trip. */
+export interface TripRequestRefusal extends ApiErrorBody {
+  trip?: Trip;
+}
+
+/** 409 `trip_state_conflict`: the step does not fit the trip as it is now; `trip` is the trip as it is. */
+export interface TripConflict extends ApiErrorBody {
+  trip: Trip;
 }
 
 // ---- maps ----

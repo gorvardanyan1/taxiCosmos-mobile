@@ -1,4 +1,4 @@
-import { useGeoRoute } from '@taxikosmos/api-client';
+import { useGeoRoute, useRequestTrip } from '@taxikosmos/api-client';
 import {
   decodePolyline,
   formatMoneyRange,
@@ -6,6 +6,8 @@ import {
   zoomToFit,
   type FareEstimate,
   type LatLng,
+  type Trip,
+  type TripRequestBody,
   type VehicleClass,
 } from '@taxikosmos/core';
 import { Button, Card, Icon, IconButton, MapView, Text, useLocale, useUiTranslation } from '@taxikosmos/ui';
@@ -15,6 +17,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { appConfig } from '../config';
+import { requestFailure, type RequestFailure } from './requestFailure';
 import { chosenEstimate, surgeOf, usableEstimates } from './rideOptions';
 import { useTripDraft } from './TripDraft';
 import { useQuoteLifecycle, type QuoteStatus } from './useQuoteLifecycle';
@@ -31,6 +34,7 @@ export function RideOptionsScreen() {
   const insets = useSafeAreaInsets();
   const { draft, updateDraft } = useTripDraft();
   const { status, refresh } = useQuoteLifecycle();
+  const request = useRequestTrip();
   const route = useGeoRoute(draft?.pickup ?? null, draft?.dropoff ?? null);
   const routePoints = useMemo(() => pointsOf(route.data?.polyline), [route.data?.polyline]);
 
@@ -43,6 +47,44 @@ export function RideOptionsScreen() {
   const shown: QuoteStatus = status === 'ready' && chosen === null ? 'failed' : status;
   const pickup: LatLng = draft.pickup;
   const dropoff: LatLng = draft.dropoff;
+  const refused = request.isError ? requestFailure(request.error) : null;
+  // A failure belongs to the price it was sent with: once a new quote arrives (an expiry) it is gone. "The price changed" is the exception: it
+  // is the news that the new quote has arrived.
+  const failure =
+    refused !== null && (refused.kind === 'quote' || request.variables?.quote_id === draft.quote.quote_id)
+      ? refused
+      : null;
+
+  const send = async () => {
+    if (chosen === null) {
+      return;
+    }
+
+    // An expired price is replaced first: the rider sees the new price before anything is requested.
+    if (Date.parse(draft.quote.expires_at) <= Date.now()) {
+      await refresh();
+
+      return;
+    }
+
+    const body: TripRequestBody = {
+      quote_id: draft.quote.quote_id,
+      vehicle_class: chosen.vehicle_class,
+      payment_method: 'cash',
+      pickup: { lat: pickup.lat, lng: pickup.lng, address: draft.pickup.address },
+      dropoff: { lat: dropoff.lat, lng: dropoff.lng, address: draft.dropoff.address },
+    };
+
+    try {
+      const trip = await request.mutateAsync(body);
+      router.replace({ pathname: '/trip', params: { id: String(trip.id) } });
+    } catch (error) {
+      // The failure is on screen (below). A price that is out of date is asked for again at once, so the rider can look and request again.
+      if (requestFailure(error).kind === 'quote') {
+        await refresh();
+      }
+    }
+  };
 
   return (
     <View className="flex-1 bg-paper dark:bg-slate-950">
@@ -73,11 +115,21 @@ export function RideOptionsScreen() {
                 estimates={estimates}
                 chosen={chosen}
                 busy={shown === 'refreshing'}
+                locked={request.isPending}
                 onChoose={(vehicleClass) => updateDraft({ vehicleClass })}
               />
             ) : (
               <Failure status={shown} onRetry={refresh} onBack={() => router.back()} />
             )}
+            {(shown === 'ready' || shown === 'refreshing') && chosen !== null ? (
+              <RequestFooter
+                chosen={chosen}
+                failure={failure}
+                disabled={shown === 'refreshing'}
+                onRequest={send}
+                onOpenActive={(trip) => router.replace({ pathname: '/trip', params: { id: String(trip.id) } })}
+              />
+            ) : null}
           </View>
         </Card>
       </View>
@@ -102,11 +154,14 @@ function Options({
   estimates,
   chosen,
   busy,
+  locked,
   onChoose,
 }: {
   estimates: readonly FareEstimate[];
   chosen: FareEstimate | null;
   busy: boolean;
+  /** A request is on its way: the choice is not changed under it. */
+  locked: boolean;
   onChoose: (vehicleClass: VehicleClass) => void;
 }) {
   const { t } = useUiTranslation();
@@ -129,7 +184,7 @@ function Options({
               accessibilityLabel={t('rideOptions.classCard', { name, price: range(estimate) })}
               accessibilityHint={surge === null ? undefined : t('rideOptions.surgeHint')}
               accessibilityState={{ selected, busy }}
-              disabled={busy}
+              disabled={busy || locked}
               onPress={() => onChoose(estimate.vehicle_class)}
               className={`min-h-[72px] flex-row items-center gap-3 rounded-2xl border-2 px-4 py-3 ${
                 selected
@@ -219,4 +274,75 @@ function Failure({
       <Button fullWidth variant="ghost" label={t('booking.back')} onPress={onBack} />
     </View>
   );
+}
+
+/** The "Request" button and, above it, why the last request did not work (each reason is its own message; none of them shows a price). */
+function RequestFooter({
+  chosen,
+  failure,
+  disabled,
+  onRequest,
+  onOpenActive,
+}: {
+  chosen: FareEstimate;
+  failure: RequestFailure | null;
+  disabled: boolean;
+  onRequest: () => Promise<void>;
+  onOpenActive: (trip: Trip) => void;
+}) {
+  const { t } = useUiTranslation();
+  const router = useRouter();
+  const retryable = failure?.kind === 'offline' || failure?.kind === 'failed' || failure?.kind === 'busy';
+  const text = failure === null ? null : failureText(failure, t);
+
+  return (
+    <View className="gap-3">
+      {text !== null ? (
+        <View accessibilityRole="alert" className="gap-1">
+          <Text className="text-base font-manrope-extrabold text-slate-950 dark:text-white">{text.title}</Text>
+          <Text className="text-sm text-slate-500 dark:text-slate-400">{text.message}</Text>
+        </View>
+      ) : null}
+      {failure?.kind === 'active' ? (
+        <Button
+          fullWidth
+          variant="primary"
+          label={t('rideOptions.openTrip')}
+          onPress={() => onOpenActive(failure.trip)}
+        />
+      ) : failure?.kind === 'outside' ? (
+        <Button fullWidth variant="ghost" label={t('booking.back')} onPress={() => router.back()} />
+      ) : (
+        <Button
+          fullWidth
+          variant="primary"
+          disabled={disabled}
+          label={
+            retryable ? t('common.retry') : t('rideOptions.request', { name: t(`rideOptions.${chosen.vehicle_class}`) })
+          }
+          // The button stays busy until the answer is in, so a second tap cannot send a second request; the same request tried again carries the same key.
+          onPress={onRequest}
+        />
+      )}
+    </View>
+  );
+}
+
+function failureText(failure: RequestFailure, t: (key: string, options?: Record<string, unknown>) => string) {
+  switch (failure.kind) {
+    case 'offline':
+      return { title: t('rideOptions.requestOfflineTitle'), message: t('rideOptions.requestOfflineMessage') };
+    case 'failed':
+      return { title: t('rideOptions.requestFailedTitle'), message: t('rideOptions.requestFailedMessage') };
+    case 'busy':
+      return { title: t('rideOptions.requestBusyTitle'), message: t('rideOptions.requestBusyMessage') };
+    case 'active':
+      return { title: t('rideOptions.activeTitle'), message: t('rideOptions.activeMessage') };
+    case 'quote':
+      return { title: t('rideOptions.quoteChangedTitle'), message: t('rideOptions.quoteChangedMessage') };
+    case 'outside':
+      return { title: t('booking.notAvailableTitle'), message: t('rideOptions.outsideMessage') };
+    case 'refused':
+      return { title: t('rideOptions.refusedTitle'), message: failure.message ?? t('rideOptions.refusedMessage') };
+  }
 }

@@ -1,4 +1,4 @@
-import type { AppConfig } from '@taxikosmos/core';
+import type { AppConfig, Trip } from '@taxikosmos/core';
 import * as fixtures from '@taxikosmos/core/fixtures';
 
 import { appApi } from '../src/api';
@@ -32,6 +32,14 @@ export interface Backend {
   route: Script;
   /** `POST /trips/fare-estimate` */
   fareEstimate: Script;
+  /** `POST /trips` */
+  requestTrip: Script;
+  /** `GET /trips/current` (204 when the rider has no trip going) */
+  currentTrip: Script;
+  /** `GET /trips/{id}` */
+  trip: Script;
+  /** `POST /trips/{id}/cancel` */
+  cancelTrip: Script;
 }
 
 export interface RecordedRequest {
@@ -99,6 +107,10 @@ export function installBackend(): { backend: Backend; requests: RecordedRequest[
     reverse: ok(fixtures.geoReverse),
     route: ok(fixtures.geoRoute),
     fareEstimate: ok(fixtures.fareEstimate),
+    requestTrip: ok(fixtures.tripsRequested),
+    currentTrip: { status: 204 },
+    trip: ok(fixtures.tripsShow),
+    cancelTrip: ok(fixtures.tripsCancelled),
   };
   const requests: RecordedRequest[] = [];
 
@@ -114,28 +126,7 @@ export function installBackend(): { backend: Backend; requests: RecordedRequest[
       idempotencyKey: new Headers(init?.headers).get('idempotency-key'),
     });
     const method = init?.method ?? 'GET';
-    const script =
-      path === '/app-config'
-        ? backend.config
-        : path === '/auth/otp/request'
-          ? backend.otpRequest
-          : path === '/auth/otp/verify'
-            ? backend.otpVerify
-            : path === '/geo/autocomplete'
-              ? backend.autocomplete
-              : path.startsWith('/geo/places/')
-                ? backend.place
-                : path === '/geo/reverse'
-                  ? backend.reverse
-                  : path === '/geo/route'
-                    ? backend.route
-                    : path === '/trips/fare-estimate'
-                      ? backend.fareEstimate
-                      : path === '/me'
-                        ? method === 'PATCH'
-                          ? backend.updateMe
-                          : backend.me
-                        : backend.logout;
+    const script = scriptFor(backend, path, method);
     const reply = typeof script === 'function' ? await script() : script;
 
     if (reply === 'network-error') {
@@ -149,6 +140,29 @@ export function installBackend(): { backend: Backend; requests: RecordedRequest[
   });
 
   return { backend, requests };
+}
+
+function scriptFor(backend: Backend, path: string, method: string): Script {
+  if (path === '/app-config') return backend.config;
+  if (path === '/auth/otp/request') return backend.otpRequest;
+  if (path === '/auth/otp/verify') return backend.otpVerify;
+  if (path === '/geo/autocomplete') return backend.autocomplete;
+  if (path.startsWith('/geo/places/')) return backend.place;
+  if (path === '/geo/reverse') return backend.reverse;
+  if (path === '/geo/route') return backend.route;
+  if (path === '/trips/fare-estimate') return backend.fareEstimate;
+  if (path === '/trips') return backend.requestTrip;
+  if (path === '/trips/current') return backend.currentTrip;
+  if (/^\/trips\/\d+\/cancel$/.test(path)) return backend.cancelTrip;
+  if (/^\/trips\/\d+$/.test(path)) return backend.trip;
+  if (path === '/me') return method === 'PATCH' ? backend.updateMe : backend.me;
+
+  return backend.logout;
+}
+
+/** A recorded trip in another state or with other details (the fixtures are real answers; a test changes only what it is about). */
+export function tripWith(changes: Partial<Trip>, base: Trip = fixtures.tripsRequested.body.data): Trip {
+  return { ...base, ...changes };
 }
 
 /** Signs the person in as the recorded rider, the way the sign-in screen will (M2-T1): the tokens are saved, then the app sees itself signed in. */
